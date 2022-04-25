@@ -1,6 +1,9 @@
 # WAV-RNG
+
+**Note: This project is a work-in-progress. The random number generator in this project should not be used for security or cryptographic purposes.**
+
 ## Introduction
-Generating truly random numbers is hard. By definition, computers cannot generate random numbers since they are deterministic in nature. Instead, computers can generate *pseudorandom* numbers. Pseudorandom number generators (PRNGs) use algorithms that take a seed, or starting value, and generate sequences of numbers that approximate the (statistical) properties of sequences of random numbers. Some of these are quite good, and are used for cryptographic purposes, but they cannot be said to be *true* random number generators (TRNGs, or just RNGs). 
+Generating truly random numbers is hard. By definition, computers cannot generate random numbers since they are deterministic. Instead, computers can generate *pseudorandom* numbers. Pseudorandom number generators (PRNGs) use algorithms that take a seed, or starting value, and generate sequences of numbers that approximate the (statistical) properties of sequences of random numbers. Some of these are quite good, and are used for cryptographic purposes, but they cannot be said to be *true* random number generators (TRNGs, or just RNGs). 
 
 While PRNGs generate sequences of numbers that look random, but are in fact predetermined by the algorithm and seed, RNGs generate random numbers based on physical phenomena that are expected to be random. Examples include measuring atmospheric noise, thermal noise, and radioactive decay. In this project, we will use the former as a basis of our random number generator. Specifically, this project includes Python code that generates random numbers, in a variety of different formats, from .wav files containing recorded atmospheric noise. A driver script `rng.py` allows users to easily generate random numbers from recorded atmospheric noise in a variety of different formats.
 
