@@ -1,3 +1,7 @@
+'''
+This file contains classes used to generate random numbers
+'''
+
 from abc import ABC, abstractmethod
 from x_from_bytes import digits_from_bytes, ascii_from_bytes, binary_from_bytes,\
     hex_from_bytes
@@ -94,7 +98,7 @@ class WAVGenerator(Generator):
             self.end = end
         self.use_bit = use_bit
         
-        self.num_bytes = end - start
+        self.num_bytes = self.end - self.start
 
         # verify start and end
         if self.start < 0 or self.start >= self.available_bytes:
@@ -102,7 +106,7 @@ class WAVGenerator(Generator):
         if self.end < 1 or self.end > self.available_bytes:
             raise MyException('Invalid end position for wav file')
         if self.start >= self.end:
-            raise MyException('Wav start position must be greater than wav end pos')
+            raise MyException('Wav start position must be less than wav end pos')
 
         # verify use_bit
         if not self.use_bit is None:
@@ -192,8 +196,9 @@ class BaseGenerator(Generator):
 
     # adds g to self.generators
     def add_generator(self, g):
-        if g.num_bytes != self.num_bytes:
-            raise MyException('Added generator must have equal num_bytes')
+        # not sure if we want this
+#        if g.num_bytes != self.num_bytes:
+#            raise MyException('Added generator must have equal num_bytes')
         self.generators.append(g)
 
     # removes all generators and clears self.data

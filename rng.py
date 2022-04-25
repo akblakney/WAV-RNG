@@ -1,9 +1,16 @@
+'''
+This is the driver script which can be used to generate random numbers from
+.wav files. For help run "python3 rng.py -h"
+
+'''
+
 import sys
 import os
 from params import set_param_int, set_param_gen
 from my_exception import MyException
 from generator import BaseGenerator, SecretsGenerator, GRCGenerator, WAVGenerator
 
+# return params from command line arguments
 def set_params():
     # get args
     inf = set_param_gen(sys.argv, '--in', None)
@@ -57,14 +64,12 @@ if __name__ == '__main__':
     inf, start, end, num_bytes, use_bit, bpb, available_bytes,\
         data_mode, outf = set_params()
 
-    # query
+    # query for how many bytes can be generated
     if '-q' in sys.argv:
         print('total available bytes for {} with bpb={}: {}'.format(
             inf, bpb, available_bytes
         ))
         exit()
-
-    
     
     # create base generator and add additional ones
     base = BaseGenerator(num_bytes)
@@ -75,8 +80,10 @@ if __name__ == '__main__':
     if '--secrets' in sys.argv:
         base.add_generator(SecretsGenerator(num_bytes))
 
+    # generate
     base.generate()
 
+    # print or write to file
     base.display(data_mode, outf)
 
 

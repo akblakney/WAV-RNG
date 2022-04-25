@@ -1,16 +1,24 @@
+'''
+This file contains methods that bytes to/from various different formats,
+such as hexadecimal digits, ascii, decimal, etc.
+'''
+
+# get hex from single byte
 def hex_from_byte(b):
     return hex(b)[2:].rjust(2,'0')
 
+# get hex from bytearray
 def hex_from_bytes(b):
     ret = ''
     for x in b:
-#        ret = ret + x.hex()
         ret = ret + hex(x)[2:].rjust(2,'0')
     return ret
 
+# get binary from single byte
 def binary_from_byte(b):
     return bin(b)[2:].rjust(8,'0')
 
+# get binary from bytearray
 def binary_from_bytes(b):
     ret = ''
     for x in b:
@@ -18,6 +26,7 @@ def binary_from_bytes(b):
         ret = ret + curr
     return ret
 
+# get digit from single byte
 def digit_from_byte(x):
     if x > 199:
         return None
@@ -38,13 +47,13 @@ def digit_from_byte(x):
 def digits_from_bytes(b):
     ret = ''
     for x in b:
-#        print(x)
         curr = digit_from_byte(x)
         if curr is not None:
             ret = '{}{}'.format(ret, digit_from_byte(x))
 
     return ret
 
+# get ascii from bytearray
 def ascii_from_bytes(b):
     ret = ''
     byte_to_ascii = {
@@ -149,22 +158,5 @@ def ascii_from_bytes(b):
         curr = byte_to_ascii[x]
         ret = '{}{}'.format(ret, curr)
     return ret
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 
