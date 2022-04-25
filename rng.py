@@ -10,6 +10,13 @@ from params import set_param_int, set_param_gen
 from my_exception import MyException
 from generator import BaseGenerator, SecretsGenerator, GRCGenerator, WAVGenerator
 
+# prints out the help statement
+def my_help():
+    with open('help') as f:
+        lines = f.readlines()
+        for l in lines:
+            print(l,end='')
+
 # return params from command line arguments
 def set_params():
     # get args
@@ -59,6 +66,11 @@ def set_params():
 
 
 if __name__ == '__main__':
+
+    # help
+    if '-h' in sys.argv:
+        my_help()
+        exit()
 
     # set params
     inf, start, end, num_bytes, use_bit, bpb, available_bytes,\
