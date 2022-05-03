@@ -57,7 +57,7 @@ Also, you can choose to run `rng.py` without a .wav file at all (although this k
 
 This option was inspired by [reallyreallyrandom](http://www.reallyreallyrandom.com/golden-rules/extract/), a project on TRNGs. The general idea is that [hash functions](https://en.wikipedia.org/wiki/Hash_function) serve as good randomness extractors. As will be discussed in the next section, the waveform of atmospheric noise does not take on the form of randomness we are looking for, in which each bit is 1 or 0 with .5 probability. The waveform does, however, contain entropy, which can be used in conjunction with a randomness extractor to generate [i.i.d.](https://en.wikipedia.org/wiki/Independent_and_identically_distributed_random_variables) samples, which is what we want.
 
-Adding the `--extract` flag will use the SHA256 hash function to extract 128 random bits from every 256 bits of processed .wav data. Thus, the user will get half as much data if they use this option. 
+Adding the `--extract` flag will use the SHA256 hash function to extract 256 random bits from every 512 bits of processed .wav data. Thus, the user will get half as much data if they use this option. 
 
 Using this option does not seem strictly necessary, considering the [testing](#testing) I've done on the regular .wav RNG, although many recommend it as good practice for TRNGs. 
 
