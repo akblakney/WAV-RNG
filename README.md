@@ -78,14 +78,14 @@ A more formal way of putting the above is that the raw bytes from the .wav file 
 To see this, take a look at the below figure. The top portion plots the raw signal over time. As you can see, the values are clumped together: several values appear very close together, then a large dip occurs, then the pattern repeats. This makes sense: after all, we are measuring the shape of a wave which, despite having random variations in it, still behaves like a wave. The bottom portion gives the autocorrelation of the signal. The x-axis corresponds to the difference in time/index of the signal (i.e., x=2 means we are looking at signals that are two points apart, x=3 means we are looking at signals that are three points apart, etc.), and the y-axis corresponds to how correlated those signals are. For perfectly random i.i.d. data, we should have a spike at zero, since each point is always identical to itself, and an autocorrelation value very close to zero everywhere else. Instead we see spikes at 2, 4, 6, and 8. This means that bytes that are 2, 4, 6, or 8 places apart in the raw .wav file are rather highly correlated; knowing what value a given byte is tells us something about what the byte two bytes after it will be, and so on. This actually makes perfect sense if we recall how .wav files are encoded: the values of the waveform are represented by 16-bit integers, i.e. 2-byte integers. We see a spike at these even numbers because as we can see in the top portion of the figure, each integer tends to be pretty similar to the next few. 
 
 ![h](figures/raw_wav_corr.png)
-*credit to reallyreallyrandom.com for the code for these plots*
+*Raw .wav data. Credit to reallyreallyrandom.com for the code for these plots*
 
 There are multiple ways of remedying this, but for the time being I'ce chosen to use the strategy outlined above: namely, select the least significant bit from each 16-bit block, and consider that to be a randomly generated bit (in other words, i.i.d. like we want). The below figure shows the raw signal and the autocorrelation for the processed .wav data with this method. If we compare the raw signal of the .wav data and the processed data, we see a clear difference. In the above .wav data, we see the signal behave more like a wave, with values clumped together as a wave tends to behave. In the processed data, this behavior is gone, and the points just look randomly placed.
 
 Further, looking at the autocorrelation of the processed data, we see that there is no detectable autocorrelation, except at x=0, which is to be expected. This means we've succesfully de-correlated our raw data. As input, we took in highly correlated data, in which raw bytes that are close to each other in the file take on similar values. After processing, this trend disappears, and one byte no longer tells us any information about subsequent bytes.
 
 ![h](figures/processed_corr.png)
-*credit to reallyreallyrandom.com for the code for these plots*
+*Processed .wav data. Credit to reallyreallyrandom.com for the code for these plots*
 
 ### `bits_per_block` and `use_bit`
 
