@@ -28,6 +28,7 @@ def set_params():
     end = None
     use_bit = None
     num_bytes = set_param_int(sys.argv, '--num_bytes', None)
+    extract = False
 
     if not inf is None:
         filesize = os.path.getsize(inf)
@@ -58,11 +59,15 @@ def set_params():
     elif '--digits' in sys.argv:
         data_mode = 'digits'
 
+    # extraction
+    if '--extract' in sys.argv:
+        extract = True
+
     # set output filename
     outf = set_param_gen(sys.argv, '--out', None)
 
     return inf, start, end, num_bytes, use_bit, bpb, available_bytes,\
-        data_mode, outf
+        data_mode, outf, extract
 
 
 if __name__ == '__main__':
@@ -74,7 +79,7 @@ if __name__ == '__main__':
 
     # set params
     inf, start, end, num_bytes, use_bit, bpb, available_bytes,\
-        data_mode, outf = set_params()
+        data_mode, outf, extract = set_params()
 
     # query for how many bytes can be generated
     if '-q' in sys.argv:
@@ -84,7 +89,7 @@ if __name__ == '__main__':
         exit()
     
     # create base generator and add additional ones
-    base = BaseGenerator(num_bytes)
+    base = BaseGenerator(num_bytes, extract)
     if not inf is None:    
         base.add_generator(WAVGenerator(inf, start, end, use_bit, bpb))
     if '--grc' in sys.argv:

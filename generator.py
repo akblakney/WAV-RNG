@@ -2,6 +2,7 @@
 This file contains classes used to generate random numbers
 '''
 
+from hashlib import sha256
 from abc import ABC, abstractmethod
 from x_from_bytes import digits_from_bytes, ascii_from_bytes, binary_from_bytes,\
     hex_from_bytes
@@ -189,10 +190,10 @@ class BaseGenerator(Generator):
 
     # sets num_bytes
     # initializes self.generators
-    def __init__(self, num_bytes):
+    def __init__(self, num_bytes, extract=False):
         self.generators = []
         self.num_bytes = num_bytes
-
+        self.extract = extract
 
     # adds g to self.generators
     def add_generator(self, g):
@@ -218,6 +219,29 @@ class BaseGenerator(Generator):
             assert(len(curr) == len(ret))
             ret = bytes(a ^ b for (a, b) in zip(ret, curr))
         self.data = ret
+
+        # optional extraction with sha256
+        if self.extract:
+            self.hash_extract()
+        
+    # feed in 512 bit blocks into sha256, get 256 bit blocks out
+    # 512 bits = 64 bytes; 256 bits = 32 bytes
+    def hash_extract(self):
+        ret = bytearray()
+        i = 0
+        while i + 64 <= len(self.data):
+#        for i in range(0, len(self.data), 64):
+            curr = sha256(self.data[i:i+64]).digest()
+            assert(len(curr) == 32)
+#            ret.append(ord(curr))
+            ret.extend(curr)
+            i += 64
+        print(len(ret))
+        print(len(self.data))
+        assert(len(ret) == 32 * (len(self.data) // 64))
+        self.data = ret
+
+            
 
     # writes or prints self.data in desired format
     def display(self, data_mode, outf):
