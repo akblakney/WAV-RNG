@@ -40,7 +40,7 @@ def digit_from_byte(x):
     elif x >= 100:
         return str(x)[1:]
     else:
-        assert(True)
+        assert(False)
     
 
 # b is a byte array, generate digits accordingly

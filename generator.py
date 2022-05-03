@@ -230,14 +230,10 @@ class BaseGenerator(Generator):
         ret = bytearray()
         i = 0
         while i + 64 <= len(self.data):
-#        for i in range(0, len(self.data), 64):
             curr = sha256(self.data[i:i+64]).digest()
             assert(len(curr) == 32)
-#            ret.append(ord(curr))
             ret.extend(curr)
             i += 64
-        print(len(ret))
-        print(len(self.data))
         assert(len(ret) == 32 * (len(self.data) // 64))
         self.data = ret
 
