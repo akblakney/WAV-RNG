@@ -63,7 +63,9 @@ These option was inspired by [reallyreallyrandom](http://www.reallyreallyrandom.
 
 Adding the `--post-extract` flag will use the SHA256 hash function to extract 256 random bits from every 512 bits of processed .wav data. Thus, the user will get half as much data if they use this option. Note that the regular algorithm—which takes one bit from every 16-bits (unless otherwise specified with `-bpb`) of .wav data—is applied before the extraction occurs.
 
-Adding the `--only-extract` flag will use the SHA512 hash function to extract 512 bit blocks *directly from 1536 bit blocks of .wav data*. Here, the regular algorithm of selecting one bit from each block of .wav data is **not** done. Instead, the .wav data is fed directly to SHA512 and randomness is extracted this way. This mode of operation is the most efficient since it takes only 192 bytes of .wav data to generate 64 random bytes, giving an efficienty of 30%. Without this mode of operation, the efficiency cannot exceed 6.25% since we only select one bit per at least 16 bits of .wav data.
+Adding the `--only-extract` flag will use the SHA512 hash function to extract 512 bit blocks *directly from 1536 bit blocks of .wav data*. Here, the regular algorithm of selecting one bit from each block of .wav data is **not** done. Instead, the .wav data is fed directly to SHA512 and randomness is extracted this way. This mode of operation is the most efficient since it takes only 192 bytes of .wav data to generate 64 random bytes, giving an efficienty of 30%. Without this mode of operation, the efficiency cannot exceed 6.25% since we only select one bit per at least 16 bits of .wav data. However, this mode is still being tested. One possible concern is that subsequent 192-byte chunks are not necessarily independent. 
+
+The `--post-extract` option is the safest option, since it does the regular bit extraction algorithm, and then applies SHA256 on top of that. The downside is that the efficiency drops to 3.1%.
 
 Using either of these options does not seem necessary, considering the [testing](#testing) I've done on the regular .wav RNG, although many recommend it as good practice for TRNGs. 
 
