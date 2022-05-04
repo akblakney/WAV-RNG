@@ -41,7 +41,11 @@ The above examples conclude the most basic functionality of the RNG. For the rem
 The full technical details of the RNG are described in the next section, but for the sake of this section, the `bits_per_block` variable dictates how many bits make up a larger "block" in the .wav file. Instead of taking all the data from the .wav file and passing it off as random data, only one bit per each block of .wav data is selected to be output in the stream of generated random data. The default value of `bits_per_block=16` is probably sufficient unless you're interested enough to mess around with it yourself, but users can specify any positive multiple of 16, e.g. `-bpb 32`.
 
 ### -u: `use_bit`
-This variable dictates which bit, within each block of .wav data, should be used. The default value is set to `None`, which means that all bits in each block will be XOR-ed together. Alternatively, the user could use `0`, as .wav data is stored in little-endian, and therefore the least significant bit will be used. The value must be a non-negative integer less than the `bits_per_block` field. The default value of `None` should be sufficient for most purposes.
+This variable dictates which bit, within each block of .wav data, should be used. The default value is set to `None`, which means that all bits in each block will be XOR-ed together. Alternatively, the user could use `-u 0`, as .wav data is stored in little-endian, and therefore the least significant bit will be used. The value must be a non-negative integer less than the `bits_per_block` field. The default value of `None` should be sufficient for most purposes.
+
+An example specifying `bits_per_block` and the `use_bit`:
+
+`$ python3 rng.py --in noise.wav -bpb 32 -u 0 --ascii --out random_ascii.txt`
 
 ### Combining with pseudorandom data
 `rng.py` provides the option of combining the random data generated from the .wav file with pseudorandom data from different sources. The two sources that are currently supported are the Python secrets module, with associated flag `--secrets` and pseudorandom data generated from grc.com/passwords.htm (Gibson Research Corporation) with `--grc`. Additionally, both can be selected, and all three sources of (pseudo)randomness will be used. The method of combining the random data is with the XOR function, which is discussed in more detail in the next section. Also note that, when using `--grc`, a maximum of 32 bytes can be requested, as getting larger amounts of data would require spam-requesting the site which I do not want to encourage. Examples:
