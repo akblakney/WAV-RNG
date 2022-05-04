@@ -8,7 +8,8 @@ import sys
 import os
 from params import set_param_int, set_param_gen
 from my_exception import MyException
-from generator import BaseGenerator, SecretsGenerator, GRCGenerator, WAVGenerator
+from generator import BaseGenerator, SecretsGenerator, GRCGenerator, \
+    WAVGenerator, WAVExtractGenerator
 
 # prints out the help statement
 def my_help():
@@ -28,7 +29,16 @@ def set_params():
     end = None
     use_bit = None
     num_bytes = set_param_int(sys.argv, '--num_bytes', None)
-    extract = False
+    post_extract = False
+    only_extract = False
+
+    # extraction
+    if '--post-extract' in sys.argv:
+        post_extract = True
+    if '--only-extract' in sys.argv:
+        only_extract = True
+    if post_extract and only_extract:
+        raise MyExcpetion('Cannot select both --only-extract and --post-extract options')
 
     if not inf is None:
         filesize = os.path.getsize(inf)
@@ -39,7 +49,15 @@ def set_params():
         if bpb < 16:
             raise MyException('bits per block must be at least 16')
 
-        available_bytes = (filesize - header_len) // bpb
+        # set available_bytes and others based on post/only/no extraction
+        if only_extract:
+            available_bytes = 64 * ((filesize - header_len) // 192) # sha512 only for now
+        else:
+            available_bytes = (filesize - header_len) // bpb
+            if post_extract:
+                available_bytes //= 2
+
+
         start = set_param_int(sys.argv, '-s', 0)
         end = set_param_int(sys.argv, '-e', available_bytes)
 
@@ -60,14 +78,16 @@ def set_params():
         data_mode = 'digits'
 
     # extraction
-    if '--extract' in sys.argv:
-        extract = True
+    if '--post-extract' in sys.argv:
+        post_extract = True
+    if '--only-extract' in sys.argv:
+        only_extract = True
 
     # set output filename
     outf = set_param_gen(sys.argv, '--out', None)
 
     return inf, start, end, num_bytes, use_bit, bpb, available_bytes,\
-        data_mode, outf, extract
+        data_mode, outf, post_extract, only_extract
 
 
 if __name__ == '__main__':
@@ -79,19 +99,30 @@ if __name__ == '__main__':
 
     # set params
     inf, start, end, num_bytes, use_bit, bpb, available_bytes,\
-        data_mode, outf, extract = set_params()
+        data_mode, outf, post_extract, only_extract = set_params()
 
     # query for how many bytes can be generated
     if '-q' in sys.argv:
-        print('total available bytes for {} with bpb={}: {}'.format(
-            inf, bpb, available_bytes
+        if post_extract:
+            ext_status = 'post-extraction (sha256)'
+        elif only_extract:
+            ext_status = 'SHA512 extraction'
+        else:
+            ext_status = 'no extraction'
+        print('total available bytes for {} with {} bpb={}: {}'.format(
+            ext_status, inf, bpb, available_bytes
         ))
         exit()
     
     # create base generator and add additional ones
-    base = BaseGenerator(num_bytes, extract)
+    base = BaseGenerator(num_bytes, post_extract)
+
+    # add only one type of WAV generator depending on only/no extraction
     if not inf is None:    
-        base.add_generator(WAVGenerator(inf, start, end, use_bit, bpb))
+        if only_extract:
+            base.add_generator(WAVExtractGenerator(inf, start, end))
+        else:
+            base.add_generator(WAVGenerator(inf, start, end, use_bit, bpb))
     if '--grc' in sys.argv:
         base.add_generator(GRCGenerator(num_bytes))
     if '--secrets' in sys.argv:

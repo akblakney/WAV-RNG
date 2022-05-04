@@ -2,7 +2,7 @@
 This file contains classes used to generate random numbers
 '''
 
-from hashlib import sha256
+from hashlib import sha256, sha512
 from abc import ABC, abstractmethod
 from x_from_bytes import digits_from_bytes, ascii_from_bytes, binary_from_bytes,\
     hex_from_bytes
@@ -72,6 +72,71 @@ class SecretsGenerator(Generator):
 
     def generate(self):
         self.data = secrets.token_bytes(self.num_bytes)
+
+
+class WAVExtractGenerator(Generator):
+    def __init__(self,inf,start=0,end=None):
+        self.inf = inf
+        self.filesize = os.path.getsize(self.inf)
+        self.HEADER_LEN = 100
+
+        # sha 512 specific values for now
+        self.bytes_per_byte = 3
+        self.input_bytes = 192
+        self.output_bytes = 64
+        self.available_bytes = self.output_bytes * \
+            ((self.filesize - self.HEADER_LEN) // self.input_bytes)
+        self.start = start
+        if end is None:
+            self.end = self.available_bytes
+        else:
+            self.end = end
+
+        self.num_bytes = self.end - self.start
+
+        # verify start and end
+        if self.start < 0 or self.start >= self.available_bytes:
+            raise MyException('Invalid start position for wav file')
+        if self.end < 64  or self.end > self.available_bytes:
+            raise MyException('Invalid end position for wav file')
+        if self.start >= self.end:
+            raise MyException('Wav start position must be less than wav end pos')
+        if self.num_bytes % self.output_bytes != 0:
+            raise MyException('With only extraction mode, ' +
+                'number of bytes must be multiple of {}'.format(self.output_bytes))
+
+        super().__init__()
+
+    def generate(self):
+
+        ret = bytearray()
+
+        # start_index and end_index idex the bytes on the WAV file,
+        # NOT the bytes to be returned
+        # we're not really using these here that much ...
+        start_index = self.HEADER_LEN + self.start * (self.input_bytes // self.output_bytes)
+        end_index   = self.HEADER_LEN +   self.end * (self.input_bytes // self.output_bytes)
+
+        file = open(self.inf, 'rb')
+
+        # skip bytes
+        _ = file.read(start_index)
+        index = start_index
+
+        # each iter generates self.output_bytes bytes
+        for i in range(self.num_bytes // self.output_bytes):
+
+            wav_bytes = file.read(self.input_bytes)
+            new_bytes = sha512(wav_bytes).digest()
+            assert(len(new_bytes) == self.output_bytes)
+            ret.extend(new_bytes)
+
+#        print(len(ret))
+        print(self.output_bytes)
+        assert(len(ret) == self.num_bytes)
+
+        file.close()
+        self.data = ret
 
 # subclass of Generator
 # generates random bytes via .wav files (of atmospheric noise)
