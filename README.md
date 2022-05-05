@@ -27,9 +27,9 @@ The same can be done with any format, including raw bytes, which is the default 
 
 Often times, a user may have a large .wav file, but may want only a portion of the random data in can generate. Firstly, to check how much random data a .wav file can generate, run,
 `$python3 rng.py --in noise.wav -q`.
-This runs the "query" function, which will return how many available bytes can be generated, with output: `total available bytes for noise.wav with bpb=16: 8975839`.
+This runs the "query" function, which will return how many available bytes can be generated, with output: `total available bytes for noise.wav: 8975839`.
 
-This tells us that our file `noise.wav` can generate about 9MB of random data. (Don't worry about the "bpb" part yet. More on that below). 
+This tells us that our file `noise.wav` can generate about 9MB of random data.
 
 Now, suppose we want only a fraction of those raw bytes. We can specify the starting and ending bytes to print with the `-s` and `-e` flags. Start is inclusive, while end is exclusive. In mathematical notation, the range: [start, end). Without specifying either, the start position defaults to zero, and the end position defaults to the maximum given the file-size:
 `$python3 rng.py --in noise.wav -s 10 -e 14 --hex`
@@ -37,15 +37,9 @@ output: `a06b1aa4`. (Note that only four bytes, in the form of hexadecimal digit
 
 The above examples conclude the most basic functionality of the RNG. For the remaining steps, we will have to dive into the more technical aspects of how the random number generation happens. For a full description of the technical details, see the [Methodology and Technical Details](methodology-and-technical-details) section. But for now I will go over the basics in order to demonstrate the other options for `rng.py`
 
-### -bpb: `bits_per_block`
-The full technical details of the RNG are described in the next section, but for the sake of this section, the `bits_per_block` variable dictates how many bits make up a larger "block" in the .wav file. Instead of taking all the data from the .wav file and passing it off as random data, only one bit per each block of .wav data is selected to be output in the stream of generated random data. The default value of `bits_per_block=16` is probably sufficient unless you're interested enough to mess around with it yourself, but users can specify any positive multiple of 16, e.g. `-bpb 32`.
+### Using `--combine` for more stringent extraction
 
-### -u: `use_bit`
-This variable dictates which bit, within each block of .wav data, should be used. The default value is set to `None`, which means that all bits in each block will be XOR-ed together. Alternatively, the user could use `-u 0`, as .wav data is stored in little-endian, and therefore the least significant bit will be used. The value must be a non-negative integer less than the `bits_per_block` field. The default value of `None` should be sufficient for most purposes.
-
-An example specifying `bits_per_block` and the `use_bit`:
-
-`$ python3 rng.py --in noise.wav -bpb 32 -u 0 --ascii --out random_ascii.txt`
+The `--combine 1` flag, followed by an integer, sets the number of subsequent bytes to be combined via the [XOR function](https://en.wikipedia.org/wiki/Exclusive_or). This results in more stringent randomness extraction from the .wav data, but also decreases the efficiency (less random data can be produced from a given file). The default is set to 1 but can be increased to two or three (higher values are probably not adding very much randomness).
 
 ### Combining with pseudorandom data
 `rng.py` provides the option of combining the random data generated from the .wav file with pseudorandom data from different sources. The two sources that are currently supported are the Python secrets module, with associated flag `--secrets` and pseudorandom data generated from grc.com/passwords.htm (Gibson Research Corporation) with `--grc`. Additionally, both can be selected, and all three sources of (pseudo)randomness will be used. The method of combining the random data is with the XOR function, which is discussed in more detail in the next section. Also note that, when using `--grc`, a maximum of 32 bytes can be requested, as getting larger amounts of data would require spam-requesting the site which I do not want to encourage. Examples:
@@ -63,11 +57,8 @@ These option was inspired by [reallyreallyrandom](http://www.reallyreallyrandom.
 
 Adding the `--post-extract` flag will use the SHA256 hash function to extract 256 random bits from every 512 bits of processed .wav data. Thus, the user will get half as much data if they use this option. Note that the regular algorithm—which takes one bit from every 16-bits (unless otherwise specified with `-bpb`) of .wav data—is applied before the extraction occurs.
 
-Adding the `--only-extract` flag will use the SHA512 hash function to extract 512 bit blocks *directly from 1536 bit blocks of .wav data*. Here, the regular algorithm of selecting one bit from each block of .wav data is **not** done. Instead, the .wav data is fed directly to SHA512 and randomness is extracted this way. This mode of operation is the most efficient since it takes only 192 bytes of .wav data to generate 64 random bytes, giving an efficienty of 30%. Without this mode of operation, the efficiency cannot exceed 6.25% since we only select one bit per at least 16 bits of .wav data. However, this mode is still being tested. One possible concern is that subsequent 192-byte chunks are not necessarily independent. 
+The `--post-extract` option can only increase the "quality" of the random numbers output, but decreases the efficiency by half.
 
-The `--post-extract` option is the safest option, since it does the regular bit extraction algorithm, and then applies SHA256 on top of that. The downside is that the efficiency drops to 3.1%.
-
-Using either of these options does not seem necessary, considering the [testing](#testing) I've done on the regular .wav RNG, although many recommend it as good practice for TRNGs. 
 
 ## Methodology and Technical Details
 ### Intuition
