@@ -24,48 +24,38 @@ def set_params():
     inf = set_param_gen(sys.argv, '--in', None)
     header_len = 100
     bpb = None
-    available_bytes = None
-    start = None
-    end = None
     use_bit = None
     num_bytes = set_param_int(sys.argv, '--num_bytes', None)
     post_extract = False
-    only_extract = False
+    wav_gen_mode = 'regular'
 
     # extraction
     if '--post-extract' in sys.argv:
         post_extract = True
+
+    # mode
     if '--only-extract' in sys.argv:
-        only_extract = True
-    if post_extract and only_extract:
-        raise MyExcpetion('Cannot select both --only-extract and --post-extract options')
+        wav_gen_mode = 'extract'
+    elif '--even' in sys.argv:
+        wav_gen_mode = 'even'
+    elif '--odd' in sys.argv:
+        wav_gen_mode = 'odd'
+        
+#    if post_extract and only_extract:
+#        raise MyExcpetion('Cannot select both --only-extract and --post-extract options')
 
     if not inf is None:
-        filesize = os.path.getsize(inf)
-    
-        bpb = set_param_int(sys.argv, '-bpb', 16)
-        if bpb % 16 != 0:
-            raise MyException('bits per block must be multiple of 16')
-        if bpb < 16:
-            raise MyException('bits per block must be at least 16')
-
-        # set available_bytes and others based on post/only/no extraction
-        if only_extract:
-            available_bytes = 64 * ((filesize - header_len) // 192) # sha512 only for now
-        else:
-            available_bytes = (filesize - header_len) // bpb
-            if post_extract:
-                available_bytes //= 2
 
 
         start = set_param_int(sys.argv, '-s', 0)
-        end = set_param_int(sys.argv, '-e', available_bytes)
+        end = set_param_int(sys.argv, '-e', None)
 
         use_bit = set_param_int(sys.argv, '-u', None)
         num_bytes = end - start
 
     if inf is None and num_bytes is None:
         raise MyException('No input wav file or num_bytes given')
+
     # set data mode
     data_mode = None
     if '--ascii' in sys.argv:
@@ -77,17 +67,11 @@ def set_params():
     elif '--digits' in sys.argv:
         data_mode = 'digits'
 
-    # extraction
-    if '--post-extract' in sys.argv:
-        post_extract = True
-    if '--only-extract' in sys.argv:
-        only_extract = True
-
     # set output filename
     outf = set_param_gen(sys.argv, '--out', None)
 
-    return inf, start, end, num_bytes, use_bit, bpb, available_bytes,\
-        data_mode, outf, post_extract, only_extract
+    return inf, start, end, num_bytes, use_bit, bpb, \
+        data_mode, outf, post_extract, wav_gen_mode
 
 
 if __name__ == '__main__':
@@ -98,20 +82,24 @@ if __name__ == '__main__':
         exit()
 
     # set params
-    inf, start, end, num_bytes, use_bit, bpb, available_bytes,\
-        data_mode, outf, post_extract, only_extract = set_params()
+    inf, start, end, num_bytes, use_bit, bpb, \
+        data_mode, outf, post_extract, wav_gen_mode = set_params()
 
     # query for how many bytes can be generated
     if '-q' in sys.argv:
-        if post_extract:
-            ext_status = 'post-extraction (sha256)'
-        elif only_extract:
-            ext_status = 'SHA512 extraction'
-        else:
-            ext_status = 'no extraction'
-        print('total available bytes for {} with {} bpb={}: {}'.format(
-            ext_status, inf, bpb, available_bytes
-        ))
+        filesize = os.path.getsize(inf)
+        available_bytes = None
+        if wav_gen_mode == 'regular':
+            available_bytes = WAVGenerator.query(filesize, bpb)
+        elif wav_gen_mode == 'extract':
+            available_bytes = WAVExtractGenerator.query(filesize)
+        elif wav_gen_mode == 'even':
+            available_bytes = WAVEvenGenerator.query(filesize)
+        elif wav_gen_mode == 'odd':
+            available_bytes = WAVOddGenerator.query(filesize)
+
+        print('available bytes: {}'.format(available_bytes))
+        
         exit()
     
     # create base generator and add additional ones
