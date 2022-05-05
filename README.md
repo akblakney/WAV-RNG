@@ -41,6 +41,8 @@ The above examples conclude the most basic functionality of the RNG. For the rem
 
 The `--combine 1` flag, followed by an integer, sets the number of subsequent bytes to be combined via the [XOR function](https://en.wikipedia.org/wiki/Exclusive_or). This results in more stringent randomness extraction from the .wav data, but also decreases the efficiency (less random data can be produced from a given file). The default is set to 1 but can be increased to two or three (higher values are probably not adding very much randomness).
 
+Example usage: `$python3 rng.py --in noise.wav --combine 2 --digits --out random_digits.txt`
+
 ### Combining with pseudorandom data
 `rng.py` provides the option of combining the random data generated from the .wav file with pseudorandom data from different sources. The two sources that are currently supported are the Python secrets module, with associated flag `--secrets` and pseudorandom data generated from grc.com/passwords.htm (Gibson Research Corporation) with `--grc`. Additionally, both can be selected, and all three sources of (pseudo)randomness will be used. The method of combining the random data is with the XOR function, which is discussed in more detail in the next section. Also note that, when using `--grc`, a maximum of 32 bytes can be requested, as getting larger amounts of data would require spam-requesting the site which I do not want to encourage. Examples:
 
@@ -55,9 +57,11 @@ Also, you can choose to run `rng.py` without a .wav file at all (although this k
 
 These option was inspired by [reallyreallyrandom](http://www.reallyreallyrandom.com/golden-rules/extract/), a project on TRNGs. The general idea is that [hash functions](https://en.wikipedia.org/wiki/Hash_function) serve as good randomness extractors. As will be discussed in the next section, the waveform of atmospheric noise does not take on the form of randomness we are looking for, in which each bit is 1 or 0 with .5 probability. The waveform does, however, contain entropy, which can be used in conjunction with a randomness extractor to generate [i.i.d.](https://en.wikipedia.org/wiki/Independent_and_identically_distributed_random_variables) samples, which is what we want.
 
-Adding the `--post-extract` flag will use the SHA256 hash function to extract 256 random bits from every 512 bits of processed .wav data. Thus, the user will get half as much data if they use this option. Note that the regular algorithm—which takes one bit from every 16-bits (unless otherwise specified with `-bpb`) of .wav data—is applied before the extraction occurs.
+Adding the `--post-extract` flag will use the SHA256 hash function to extract 256 random bits from every 512 bits of processed .wav data. Thus, the user will get half as much data if they use this option. Note that the regular algorithm—which takes only the even bytes from the file (and even less if `--combine x` is used—is applied before the extraction occurs.
 
 The `--post-extract` option can only increase the "quality" of the random numbers output, but decreases the efficiency by half.
+
+Example usage: `$python3 rng.py --in noise.wav --combine 2 --post-extract --out random_data.bin`
 
 
 ## Methodology and Technical Details
