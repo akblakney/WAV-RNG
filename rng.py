@@ -22,40 +22,24 @@ def my_help():
 def set_params():
     # get args
     inf = set_param_gen(sys.argv, '--in', None)
+    combine = set_param_int(sys.argv, '--combine', 1)
     header_len = 100
-    bpb = 16
-    use_bit = None
-    num_bytes = set_param_int(sys.argv, '--num_bytes', None)
     post_extract = False
-    wav_gen_mode = 'regular'
-    num_bytes = None
+    wav_gen_mode = 'even'
 
     # extraction
     if '--post-extract' in sys.argv:
         post_extract = True
 
-    # mode
+    # wav-mode
     if '--only-extract' in sys.argv:
         wav_gen_mode = 'extract'
-    elif '--even' in sys.argv:
-        wav_gen_mode = 'even'
     elif '--odd' in sys.argv:
         wav_gen_mode = 'odd'
-        
-#    if post_extract and only_extract:
-#        raise MyExcpetion('Cannot select both --only-extract and --post-extract options')
 
-    if not inf is None:
+    start = set_param_int(sys.argv, '-s', 0)
+    end = set_param_int(sys.argv, '-e', None)
 
-
-        start = set_param_int(sys.argv, '-s', 0)
-        end = set_param_int(sys.argv, '-e', None)
-        bpb = set_param_int(sys.argv, '-bpb', bpb)
-
-        use_bit = set_param_int(sys.argv, '-u', None)
-
-    if inf is None and num_bytes is None:
-        raise MyException('No input wav file or num_bytes given')
 
     # set data mode
     data_mode = None
@@ -71,8 +55,8 @@ def set_params():
     # set output filename
     outf = set_param_gen(sys.argv, '--out', None)
 
-    return inf, start, end, num_bytes, use_bit, bpb, \
-        data_mode, outf, post_extract, wav_gen_mode
+    return inf, start, end, combine, \
+        data_mode, outf, post_extract
 
 
 if __name__ == '__main__':
@@ -83,42 +67,31 @@ if __name__ == '__main__':
         exit()
 
     # set params
-    inf, start, end, num_bytes, use_bit, bpb, \
-        data_mode, outf, post_extract, wav_gen_mode = set_params()
+    inf, start, end, combine, \
+        data_mode, outf, post_extract = set_params()
 
     # query for how many bytes can be generated
     if '-q' in sys.argv:
         filesize = os.path.getsize(inf)
-        available_bytes = None
-        if wav_gen_mode == 'regular':
-            available_bytes = WAVGenerator.query(filesize, bpb)
-        elif wav_gen_mode == 'extract':
-            available_bytes = WAVExtractGenerator.query(filesize)
-        elif wav_gen_mode == 'even':
-            available_bytes = EvenGenerator.query(filesize)
-        elif wav_gen_mode == 'odd':
-            available_bytes = OddGenerator.query(filesize)
-
+        available_bytes = EvenGenerator.query(filesize, combine)
+        ext_status = 'no post-extraction'
         if post_extract:
+            ext_status = 'post-extraction'
             available_bytes //= 2
 
-        print('available bytes: {}'.format(available_bytes))
+        print('available bytes with combining factor of {} and {}: {}'.format(
+            combine, ext_status, available_bytes))
         
         exit()
     
     # create base generator and add additional ones
     base = BaseGenerator(None, post_extract)
 
-    # add only one type of WAV generator depending on only/no extraction
-    if not inf is None:    
-        if wav_gen_mode == 'extract':
-            base.add_generator(WAVExtractGenerator(inf, start, end))
-        elif wav_gen_mode == 'even':
-            base.add_generator(EvenGenerator(inf, start, end))
-        elif wav_gen_mode == 'odd':
-            base.add_generator(OddGenerator(inf, start, end))
-        else:
-            base.add_generator(WAVGenerator(inf, start, end, use_bit, bpb))
+    # add the WAV EvenGenerator
+    e = EvenGenerator(inf, start, end, combine)
+    num_bytes = e.num_bytes
+    base.add_generator(e)
+
     if '--grc' in sys.argv:
         base.add_generator(GRCGenerator(num_bytes))
     if '--secrets' in sys.argv:

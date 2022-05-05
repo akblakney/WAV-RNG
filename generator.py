@@ -143,12 +143,15 @@ class WAVExtractGenerator(Generator):
         return 64 * ((filesize - 100) // 192)
 
 class EvenGenerator(Generator):
-    def __init__(self, inf, start, end):
+    # comb gives how many subsequent (even) bytes to combine with xor
+    def __init__(self, inf, start, end, comb):
         self.inf = inf
         filesize = os.path.getsize(inf)
-        avail = self.query(filesize)
+        avail = self.query(filesize, comb)
         self.start = start
         self.end = end
+        self.comb = comb
+
         if end is None:
             self.end = avail
 
@@ -158,10 +161,14 @@ class EvenGenerator(Generator):
             raise MyException('invalid start')
         if self.start >= self.end:
             raise MyException('start >= self.end')
+        if comb < 1:
+            raise MyException('comb must be > 0')
 
         self.num_bytes = self.end - self.start
         super().__init__()
 
+    # get only the even numbered bytes from the file
+    # combine self.comb subsequent bytes w xor to form one byte
     def generate(self):
         ret = bytearray()
         file = open(self.inf, 'rb')
@@ -169,22 +176,26 @@ class EvenGenerator(Generator):
         _ = file.read(100)
         byte = file.read(1)
 
-#        while byte:
+        # each iter of this loop adds one byte
         for i in range(self.num_bytes):
-            # even numbered byte
-            ret.append(ord(byte))
+            curr_byte = 0
+            for j in range(self.comb):
+                # byte is even numbered byte
+#                ret.append(ord(byte))
+                curr_byte = curr_byte ^ ord(byte)
 
-            try:
+                # skip odd yte
                 _ = file.read(1)
                 byte = file.read(1)
-            except BaseException:
-                self.data = ret
-                return
+
+            # we should have xored self.comb bytes to end with curr_byte
+            ret.append(curr_byte)
+
         self.data = ret
 
     @staticmethod
-    def query(filesize):
-        return (filesize - 100) // 2
+    def query(filesize, comb):
+        return (filesize - 100) // (2 * comb)
 
 
 class OddGenerator(Generator):
@@ -230,6 +241,8 @@ class OddGenerator(Generator):
     def query(filesize):
         return (filesize - 100) // 2
 
+
+# NOTE: BY NOW THIS IS DEFUCT. EvenGenerator is bettter.
 # subclass of Generator
 # generates random bytes via .wav files (of atmospheric noise)
 # inf is input wav filename
