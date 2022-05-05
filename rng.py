@@ -9,7 +9,7 @@ import os
 from params import set_param_int, set_param_gen
 from my_exception import MyException
 from generator import BaseGenerator, SecretsGenerator, GRCGenerator, \
-    WAVGenerator, WAVExtractGenerator
+    WAVGenerator, WAVExtractGenerator, EvenGenerator, OddGenerator
 
 # prints out the help statement
 def my_help():
@@ -23,11 +23,12 @@ def set_params():
     # get args
     inf = set_param_gen(sys.argv, '--in', None)
     header_len = 100
-    bpb = None
+    bpb = 16
     use_bit = None
     num_bytes = set_param_int(sys.argv, '--num_bytes', None)
     post_extract = False
     wav_gen_mode = 'regular'
+    num_bytes = None
 
     # extraction
     if '--post-extract' in sys.argv:
@@ -49,9 +50,9 @@ def set_params():
 
         start = set_param_int(sys.argv, '-s', 0)
         end = set_param_int(sys.argv, '-e', None)
+        bpb = set_param_int(sys.argv, '-bpb', bpb)
 
         use_bit = set_param_int(sys.argv, '-u', None)
-        num_bytes = end - start
 
     if inf is None and num_bytes is None:
         raise MyException('No input wav file or num_bytes given')
@@ -94,21 +95,28 @@ if __name__ == '__main__':
         elif wav_gen_mode == 'extract':
             available_bytes = WAVExtractGenerator.query(filesize)
         elif wav_gen_mode == 'even':
-            available_bytes = WAVEvenGenerator.query(filesize)
+            available_bytes = EvenGenerator.query(filesize)
         elif wav_gen_mode == 'odd':
-            available_bytes = WAVOddGenerator.query(filesize)
+            available_bytes = OddGenerator.query(filesize)
+
+        if post_extract:
+            available_bytes //= 2
 
         print('available bytes: {}'.format(available_bytes))
         
         exit()
     
     # create base generator and add additional ones
-    base = BaseGenerator(num_bytes, post_extract)
+    base = BaseGenerator(None, post_extract)
 
     # add only one type of WAV generator depending on only/no extraction
     if not inf is None:    
-        if only_extract:
+        if wav_gen_mode == 'extract':
             base.add_generator(WAVExtractGenerator(inf, start, end))
+        elif wav_gen_mode == 'even':
+            base.add_generator(EvenGenerator(inf, start, end))
+        elif wav_gen_mode == 'odd':
+            base.add_generator(OddGenerator(inf, start, end))
         else:
             base.add_generator(WAVGenerator(inf, start, end, use_bit, bpb))
     if '--grc' in sys.argv:

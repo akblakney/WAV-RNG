@@ -143,8 +143,23 @@ class WAVExtractGenerator(Generator):
         return 64 * ((filesize - 100) // 192)
 
 class EvenGenerator(Generator):
-    def __init__(self, inf):
+    def __init__(self, inf, start, end):
         self.inf = inf
+        filesize = os.path.getsize(inf)
+        avail = self.query(filesize)
+        self.start = start
+        self.end = end
+        if end is None:
+            self.end = avail
+
+        if self.start < 0 or self.start >= avail:
+            raise MyException('invalid self.start')
+        if self.end < 1 or self.end > avail:
+            raise MyException('invalid start')
+        if self.start >= self.end:
+            raise MyException('start >= self.end')
+
+        self.num_bytes = self.end - self.start
         super().__init__()
 
     def generate(self):
@@ -154,8 +169,8 @@ class EvenGenerator(Generator):
         _ = file.read(100)
         byte = file.read(1)
 
-        while byte:
-
+#        while byte:
+        for i in range(self.num_bytes):
             # even numbered byte
             ret.append(ord(byte))
 
@@ -173,8 +188,23 @@ class EvenGenerator(Generator):
 
 
 class OddGenerator(Generator):
-    def __init__(self, inf):
+    def __init__(self, inf,start,end):
         self.inf = inf
+        filesize = os.path.getsize(inf)
+        avail = self.query(filesize)
+        self.start = start
+        self.end = end
+        if end is None:
+            self.end = avail
+
+        if self.start < 0 or self.start >= avail:
+            raise MyException('invalid self.start')
+        if self.end < 1 or self.end > avail:
+            raise MyException('invalid start')
+        if self.start >= self.end:
+            raise MyException('start >= self.end')
+
+        self.num_bytes = self.end - self.start
         super().__init__()
 
     def generate(self):
@@ -184,8 +214,7 @@ class OddGenerator(Generator):
         _ = file.read(101)
         byte = file.read(1)
 
-        while byte:
-
+        for i in range(self.num_bytes):
             # even numbered byte
             ret.append(ord(byte))
 
