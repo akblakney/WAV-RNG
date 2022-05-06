@@ -144,10 +144,12 @@ class WAVExtractGenerator(Generator):
 
 class EvenGenerator(Generator):
     # comb gives how many subsequent (even) bytes to combine with xor
-    def __init__(self, inf, start, end, comb):
+    def __init__(self, inf, start, end, comb, extract=False, extract_ratio=2):
         self.inf = inf
         filesize = os.path.getsize(inf)
-        avail = self.query(filesize, comb)
+        self.extract = extract
+        self.extract_ratio = extract_ratio
+        avail = self.query(filesize, comb, self.extract, self.extract_ratio)
         self.start = start
         self.end = end
         self.comb = comb
@@ -158,7 +160,7 @@ class EvenGenerator(Generator):
         if self.start < 0 or self.start >= avail:
             raise MyException('invalid self.start')
         if self.end < 1 or self.end > avail:
-            raise MyException('invalid start')
+            raise MyException('invalid end')
         if self.start >= self.end:
             raise MyException('start >= self.end')
         if comb < 1:
@@ -166,6 +168,8 @@ class EvenGenerator(Generator):
 
         self.num_bytes = self.end - self.start
         super().__init__()
+        if self.extract:
+            self.hash_extract()
 
     # get only the even numbered bytes from the file
     # combine self.comb subsequent bytes w xor to form one byte
@@ -193,9 +197,30 @@ class EvenGenerator(Generator):
 
         self.data = ret
 
+    # feed in 1024 bit blocks into sha512, get 512 bit blocks out
+    # 512 bits = 64 bytes; 1024 bits = 128 bytes
+    def hash_extract(self):
+        HASH_SIZE = 64  # constant for SHA512
+        inp_size = HASH_SIZE * self.extract_ratio
+        ret = bytearray()
+        i = 0
+        while i + inp_size <= len(self.data):
+            curr = sha512(self.data[i:i+inp_size]).digest()
+            assert(len(curr) == HASH_SIZE)
+            ret.extend(curr)
+            i += inp_size
+#        print(len(ret))
+#        print( HASH_SIZE * (len(self.data) // inp_size))
+        assert(len(ret) == HASH_SIZE * (len(self.data) // inp_size))
+        self.data = ret
+
+
     @staticmethod
-    def query(filesize, comb):
-        return (filesize - 100) // (2 * comb)
+    def query(filesize, comb, extract, extract_ratio):
+        ret = (filesize - 100) // (2 * comb)
+        #if extract:
+        #    ret //= extract_ratio
+        return ret
 
 
 class OddGenerator(Generator):
@@ -364,10 +389,9 @@ class BaseGenerator(Generator):
 
     # sets num_bytes
     # initializes self.generators
-    def __init__(self, num_bytes=None, extract=False):
+    def __init__(self, num_bytes=None):
         self.generators = []
         self.num_bytes = num_bytes
-        self.extract = extract
 
     # adds g to self.generators
     def add_generator(self, g):
@@ -394,23 +418,7 @@ class BaseGenerator(Generator):
             ret = bytes(a ^ b for (a, b) in zip(ret, curr))
         self.data = ret
 
-        # optional extraction with sha256
-        if self.extract:
-            self.hash_extract()
         
-    # feed in 512 bit blocks into sha256, get 256 bit blocks out
-    # 512 bits = 64 bytes; 256 bits = 32 bytes
-    def hash_extract(self):
-        ret = bytearray()
-        i = 0
-        while i + 64 <= len(self.data):
-            curr = sha256(self.data[i:i+64]).digest()
-            assert(len(curr) == 32)
-            ret.extend(curr)
-            i += 64
-        assert(len(ret) == 32 * (len(self.data) // 64))
-        self.data = ret
-
             
 
     # writes or prints self.data in desired format

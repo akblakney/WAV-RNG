@@ -23,19 +23,18 @@ def set_params():
     # get args
     inf = set_param_gen(sys.argv, '--in', None)
     combine = set_param_int(sys.argv, '--combine', 1)
-    header_len = 100
     post_extract = False
-    wav_gen_mode = 'even'
+    post_ext_ratio = None
 
     # extraction
     if '--post-extract' in sys.argv:
         post_extract = True
+        post_ext_ratio = set_param_int(sys.argv, '--post-extract', None)
+        if post_ext_ratio is None:
+            raise MyException('Must give integer value > 1 for post extract ratio')
+        elif post_ext_ratio < 2:
+            raise MyException('post extract ratio must be > 1')
 
-    # wav-mode
-    if '--only-extract' in sys.argv:
-        wav_gen_mode = 'extract'
-    elif '--odd' in sys.argv:
-        wav_gen_mode = 'odd'
 
     start = set_param_int(sys.argv, '-s', 0)
     end = set_param_int(sys.argv, '-e', None)
@@ -56,7 +55,7 @@ def set_params():
     outf = set_param_gen(sys.argv, '--out', None)
 
     return inf, start, end, combine, \
-        data_mode, outf, post_extract
+        data_mode, outf, post_extract, post_ext_ratio
 
 
 if __name__ == '__main__':
@@ -68,28 +67,28 @@ if __name__ == '__main__':
 
     # set params
     inf, start, end, combine, \
-        data_mode, outf, post_extract = set_params()
+        data_mode, outf, post_extract, post_ext_ratio = set_params()
 
     # query for how many bytes can be generated
     if '-q' in sys.argv:
         filesize = os.path.getsize(inf)
-        available_bytes = EvenGenerator.query(filesize, combine)
-        ext_status = 'no post-extraction'
-        if post_extract:
-            ext_status = 'post-extraction'
-            available_bytes //= 2
+        available_bytes = EvenGenerator.query(
+            filesize, combine, post_extract, post_ext_ratio)
+#        ext_status = 'no post-extraction'
+#        if post_extract:
+#            ext_status = 'post-extraction'
 
-        print('available bytes with combining factor of {} and {}: {}'.format(
-            combine, ext_status, available_bytes))
+        print('available bytes with combining factor of {}: {}'.format(
+            combine, available_bytes))
         
         exit()
     
     # create base generator and add additional ones
-    base = BaseGenerator(None, post_extract)
+    base = BaseGenerator(None)
 
     # add the WAV EvenGenerator
-    e = EvenGenerator(inf, start, end, combine)
-    num_bytes = e.num_bytes
+    e = EvenGenerator(inf, start, end, combine, post_extract, post_ext_ratio)
+    num_bytes = len(e.data)
     base.add_generator(e)
 
     if '--grc' in sys.argv:
