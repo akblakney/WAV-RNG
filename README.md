@@ -57,11 +57,11 @@ Also, you can choose to run `rng.py` without a .wav file at all (although this k
 
 These option was inspired by [reallyreallyrandom](http://www.reallyreallyrandom.com/golden-rules/extract/), a project on TRNGs. The general idea is that [hash functions](https://en.wikipedia.org/wiki/Hash_function) serve as good randomness extractors. As will be discussed in the next section, the waveform of atmospheric noise does not take on the form of randomness we are looking for, in which each bit is 1 or 0 with .5 probability. The waveform does, however, contain entropy, which can be used in conjunction with a randomness extractor to generate [i.i.d.](https://en.wikipedia.org/wiki/Independent_and_identically_distributed_random_variables) samples, which is what we want.
 
-Adding the `--post-extract` flag will use the SHA256 hash function to extract 256 random bits from every 512 bits of processed .wav data. Thus, the user will get half as much data if they use this option. Note that the regular algorithm—which takes only the even bytes from the file (and even less if `--combine x` is used—is applied before the extraction occurs.
+Adding the `--post-extract` flag followed by an integer greater than 1 will use the SHA512 hash function to extract 512 random bits from every 512 * x bits of processed .wav data, where x is the integer given. Thus, `--post-extract 2` means 1024-byte blocks are hashed to produce 512-bit blocks; `--post-extract 4` means 2048-bit blocks are hashed to produce 512-bit blocks, and so on. Using this method thus decreases the efficiency in terms of the amount of output of the generator. Note that the regular algorithm—which takes only the even bytes from the file (and even less if `--combine x` is used—is applied before the extraction occurs.
 
-The `--post-extract` option can only increase the "quality" of the random numbers output, but decreases the efficiency by half.
+Overall, this option increases the robustness of the generator.
 
-Example usage: `$python3 rng.py --in noise.wav --combine 2 --post-extract --out random_data.bin`
+Example usage: `$python3 rng.py --in noise.wav --combine 2 --post-extract 2 --out random_data.bin`
 
 
 ## Methodology and Technical Details
@@ -161,13 +161,15 @@ Reject Ho.  Not IID!
 
 For the reallyreallyrandom tests, the second to last line gives what is essentially a p-value. The even bytes received a score of 0.856, for which we would not reject the null hypothesis that the data are i.i.d.; the odd bytes received a score of 0.0 (it's not actually zero, just very close to zero), for which we would reject the null hypothesis that the data are i.i.d.
 
-With regards to entropy, I measured the entropy of the even/odd bytes in two ways: first with the [paq8px compression tool](https://github.com/hxim/paq8px), which attempts to compress the data as much as possible; and second byte calculating the min-entropy by taking the negative logarithm of the most likely probability of byte values. 
+With regards to entropy, I measured the entropy of the even/odd bytes in two ways: first with the [paq8px compression tool](https://github.com/hxim/paq8px), which attempts to compress the data as much as possible; and second by calculating the min-entropy by taking the negative logarithm of the most likely probability of byte values. 
 
-With the paq9px compression tool, the even bytes were not able to be compressed at all. In fact, a 1MB file was compressed to slightly over a 1MB size. The odd bytes, however, were able to be compressed quite significantly, with a 1MB file being compressed down to 289KB. This gives an estimated entropy of about 2.3 bits/byte (while the even bytes are apparently a perfect 8bits/byte).
+With the paq8px compression tool, the even bytes were not able to be compressed at all. In fact, a 1MB file was compressed to slightly over a 1MB size. The odd bytes, however, were able to be compressed quite significantly, with a 1MB file being compressed down to 289KB. This gives an estimated entropy of about 2.3 bits/byte (while the even bytes are apparently a perfect 8bits/byte).
 
 For the min-entropy, the even bytes received a score of 7.93 bits/byte, while the odd bytes received a score of 5.57 bits/byte.
 
 To summarize, we saw the odd bytes were highly autocorrelated, and had a non-uniform byte distribution. We further saw that the odd bytes failed two i.i.d. tests, and appear to have an entropy ranging from 2 - 5.5 bits/byte. On the other hand, the even bytes were not autocorrelated and had a uniform distribution. Further, they passed two i.i.d. tests, and seem to have an entropy close to 8 bits/byte. All in all, it is clear that the even bytes are a good source of entropy, if not truly random data (i.i.d.).
+
+Therefore, with reason to believe the even bytes are random, I used this as the basis of the RNG: given a .wav file, simply take the even bytes and output them as random data. Verifying this method requires still more testing, which is detailed in the [testing](#testing) section. The good news is, data generated with this method passes the NIST randomness test suite, and the dieharder test suites, two popular tests for verifying that data is random. So as far as I can tell, this method works! As an added measure of security, the next section discusses the intuition behind the options which allow users to combine the data generated by the .wav RNG with pseudorandom data from PRNGs, or with itself to gain higher confidence that the output data is indeed random.
 
 
 ### The *Exclusive or* operation
@@ -175,15 +177,25 @@ To summarize, we saw the odd bytes were highly autocorrelated, and had a non-uni
 
 This logical operation is relevant for us because it has some useful properties when it comes to randomness. Namely, the XOR operation preserves randomness. This means that, if I have a string of random bits (that is, generated from a random process, such that each bit is 1 with probability 0.5 and 0 with probability 0.5), and I XOR that string of bits with *any* (statistically independent) string of bits of the same length, the resulting string of bits will also be random. XOR is quite a powerful tool then: even if I XOR a string of random bits with a completely deterministic and non-random string of bits (say 11111..., i.e. a string which entirely consists of 1s), the result will still be random! There is one caveat that I mentioned above, which is that the two strings must be statistically independent, i.e., their probability distributions cannot depend on one another. Luckily, the way we are using XOR in this project adheres to this requirement.
 
-In the previous section I talk about the `--secrets` and `--grc` options which allow the user to combine the random bits generated from the .wav file with pseudorandom bits generated in the Python secrets module and GRC's PRNG. The reason I provide this option is to increase the robustness of the RNG overall. Consider the idea that we may not be completely sure that the bits generated from the .wav files are entirely random. Perhaps the frequency we are tuning to during the recording process has a faint signal that has a pattern to it. Or perhaps the way that the waveform is being written to the .wav file has some properties that causes some patterns of bits to be more likely than others. In most instances this seems unlikely given the testing I have done on the .wav portion of the RNG, which I describe in more detail in the [next section](#testing), but it is always a possibility. The option of combining the random data from the .wav portion of the RNG with other sources of pseudorandom data is a way to counter this possibility. 
+In the previous section I talked about the `--secrets` and `--grc` options which allow the user to combine the random bits generated from the .wav file with pseudorandom bits generated in the Python secrets module and GRC's PRNG. I also talked about the `--combine` option, which allows users to combine subsequent bytes in the .wav file to gain higher confidence that the output is random. The reason I provide these options is to increase the robustness of the RNG overall. Consider the idea that we may not be completely sure that the bits generated from the .wav files are entirely random. Perhaps the frequency we are tuning to during the recording process has a faint signal that has a pattern to it. Or perhaps the way that the waveform is being written to the .wav file has some properties that causes some patterns of bits to be more likely than others. In most instances this seems unlikely given the testing I have done on the .wav portion of the RNG, which I describe in more detail in the [next section](#testing), but it is always a possibility. The option of combining the random data from the .wav portion of the RNG with other sources of pseudorandom data is a way to counter this possibility. And the option of combining .wav bytes with subsequent .wav bytes helps ensure high entropy in the event that the even bytes of the .wav file contain less than the desired 8 bits/byte entropy.
 
 As I mentioned, as long as two strings of bits are statistically independent—and here it is safe to say that the .wav data, the output of the Python secrets module, and the output of the GRC PRNG are mutually independent, satisfying this requirement—XOR-ing these bit strings together cannot eliminate any randomness that either of the bit strings already contained. In other words, if we XOR random data generated from the .wav file with pseudorandom data generated from the Python secrets module, the output will still be "just as random" as the data from the .wav file. I put "just as random" in quotes because talking about *how random* something is perhaps requires more mathematically robust language than is being used here, but the overall principle holds.
 
+With regards to the `--combine` option, its effectiveness still hinges on the fact that subsequent bytes are independent. The samples that I've tested so far do appear to be independent (see autocorrelation and i.i.d. tests from earlier), and therefore XORing subsequent bytes serves as a fail-safe against the possibility that the bytes have less than the desired 8 bits/byte entropy.
+
 So the gist of it is, XOR-ing the random output from the .wav file with pseudorandom data from the Python secrets module (which Python claims is a cryptographically-secure pseudorandom generator (CSPRNG)) cannot "downgrade" the randomness of the data. It can only upgrade it in the event that the .wav portion of the RNG isn't functioning properly and is not working as a proper RNG. In this instance, we would be XOR-ing non-random data from the .wav generator with pseudrandom data from Python's secrets module, and we would essentially have a PRNG. So users can view this option as a sort of fail-safe against the hard-to-eliminate possibility that the .wav RNG has some imperfections. 
+
+The same goes for the `--combine` option. This option could only "downgrade" the randomness of the output if subsequent bytes are not independent, in which case the generator as a whole would perform very poorly, and it would be noticable in our [testing](#testing).
 
 ### Extracting randomness with hash functions
 
 Interested readers should see [this](http://www.reallyreallyrandom.com/golden-rules/extract/) page, since that's where I first learned about this idea, and they explain it better than I can. What I'll give here is a distilled version of their explanation. The gist of it is, with a TRNG based on physical processes that look random, we don't really have a true randomness source, but we do have a source of entropy. As discussed earlier, the waveform does not directly give us i.i.d. samples, but it does give us entropy that we can use to generate i.i.d. samples. We can think of randomness extractors as functions which take as input *entropy*, and give as an output *randomness*, in the i.i.d. sense. The processing of the data that I do regardless of whether the "hash extraction" option is used should be sufficient to convert the non-i.i.d. waveform into random i.i.d. samples—at least the autocorrelation and other [tests](#testing) have born that out. Nonetheless, using a [hash function](https://en.wikipedia.org/wiki/Hash_function) to get i.i.d samples from raw entropy can only help. In fact, hash functions have the properties that 1) with only negligible probability will two different inputs produce the same output, and 2) for any input, the output of the hash function should be uniformly distributed. This means that when we feed *m* bits from our .wav RNG to our hash function, which produces an *n* bit output, for *n < m*, we ensure that a [negligible](https://eprint.iacr.org/2011/088.pdf) amount of entropy is lost, and therefore the output is a uniform random string with high entropy.
+
+In this implementation, the `--post-extract` option applies the SHA512 hash function to 128-byte blocks generated by the .wav RNG, resulting in 64-byte blocks of hashed output. This greatly increases the resilience of the generator by taking as input something close to 1024 bits of entropy (if we assume the .wav RNG results in close to 8 bits/byte of entropy, and it seems to be close) to produce 512 bits of essentially uniform random data. I say "essentially" because no one can prove that this is exactly what the SHA hash functions do. But this method is common place in cryptographic uses because the outputs of SHA hashes are so close to uniform random (the i.i.d. random that we're after) that no one can prove otherwise.
+
+A small note here on TRNG vs PRNG: it might be curious that we're using a deterministic function like SHA512 to supposedly generate truly random bits. Didn't I start out by saying how computers can by definition not be TRNGs, and are instead PRNGs (emphasis on the *pseudo*), and that is why we pursue generating random numbers with a source like atmospheric noise? The key here is the input entropy. In a regular PRNG, we have a small seed and use it to generate many random bits. Therefore the entropy output is far greater than the entropy input. Basically, it is the PRNG algorithm that is doing the bulk of the "entropy generation" here. In our case, we are always feeding the deterministic SHA512 function *more entropy than it outputs*. So we are not relegating the difficult task of entropy generation to a deterministic function; we are saving that task for the recorded atmospheric noise, and then using a deterministic hash function, or [randomness extractor](https://en.wikipedia.org/wiki/Randomness_extractor), to post-process the entropy we collected. 
+
+Overall, this option increases the robustness of the generator. Even if there are slight biases in a sample of recorded atmospheric noise, because we are feeding SHA512 almost twice the amount of entropy it is outputing, the hash function is likely to eliminate these biases and keep the outputs random.
 
 ## Testing
 
@@ -254,12 +266,12 @@ Here I mostly tested the basic RNG, with the `combine` variable set to the defau
 
 In addition to a fail rate that deviates from the expected (in this case, 1%) rate, another indication that the test data were not generated by a random process is if the distribution of p-values deviates significantly from the [uniform distribution](https://en.wikipedia.org/wiki/Continuous_uniform_distribution) over the interval [0,1). Below is a histogram of the p-values for the `use_bit=None` mode of the .wav RNG. If the data were not generated by a random process, we might expect to see a distribution that deviates significantly from the uniform distribution, e.g. more p-values closer to the extreme ends of 0 and 1. However, the distribution of p-values seen below is quite similar to the uniform distribution, and certainly does not deviate enough to indicate non-randomness.
 
-![hi](figures/comb1_NIST_pvals)
+![hi](figures/comb1_NIST_pvals.png)
 
 For the `--combine 2` setting, I only did half the tests, since the generator is less efficient in terms of data output in this mode, and also since the results should only exceed those on the less stringent setting of `--combine 1`. 
-**For the `--combine 2` setting, 408 out of 410 tests passed. This is a 99.51% success rate.** As with the `--combine 1` case, this is very close to the expected success rate of 99% for a perfect RNG. Below is a histogram of the p-values for the `--combine 2` setting, which is quite close to the expected uniform distribution.
+**For the `--combine 2` setting, 408 out of 410 tests passed. This is a 99.5% success rate.** As with the `--combine 1` case, this is very close to the expected success rate of 99% for a perfect RNG. Below is a histogram of the p-values for the `--combine 2` setting, which is quite close to the expected uniform distribution.
 
-![hi](figures/comb2_NIST_pvals)
+![hi](figures/comb2_NIST_pvals.png)
 
 Overall, with both `combine` settings, the fail-rate of the RNG was very close to the expected fail rate of 1% for an ideal generator. Furthermore, the distributions of p-values did not deviate significantly from the expected uniform distribution. Therefore, the statistical tests in this suite did not provide evidence that the data was not random.
 
@@ -282,48 +294,6 @@ Below is the summary of the the dieharder test results for the .wav RNG using `u
 
 
 The `use_bit=None` .wav RNG performed worse, with five WEAK results and two FAILED results. The two FAILED results are a strong indication that the data tested by the dieharder tests was not generated by a random process. However, because of the file rewinding, this does not necessarily mean that there is a strong indication that the 1GB of data generated by the .wav RNG was not random; it could be that the file "rewinding" contributed to the FAILED tests. Until larger data files are obtained to test on, it is difficult to draw any firm conclusions from these tests.
-
-### NIST 800-90B IID tests
-I applied [this](https://github.com/usnistgov/SP800-90B_EntropyAssessment) implementation of [NIST 800-90B, *Recommendation for the Entropy Sources Used for Random Bit Generation*](https://nvlpubs.nist.gov/nistpubs/SpecialPublications/NIST.SP.800-90B.pdf) to the data generated by the RNG, in particular the i.i.d. tests which test whether the data are i.i.d. random. The generator passed all tests. Here is a sample output:
-
-```
-H_original: 7.929300
-H_bitstring: 0.999108
-min(H_original, 8 X H_bitstring): 7.929300
-** Passed chi square tests
-
-** Passed length of longest repeated substring test
-
-** Passed IID permutation tests
-```
-
-### Reallyreallyrandom IID Tests
-
-I applied [reallyreallyrandom's](http://www.reallyreallyrandom.com/golden-rules/our_tests/) IID tests to data generated from the .wav RNG. I applied their fast- and slow- IID tests to files approximately 5MB in size, and all tests were passed. Interested readers should read their detailed documentation of the tests on the above link.
-
-For the slow IID test, a summary output was given: `*** PASSED permutation test. There is no evidence that the data is not IID ***`, which it concluded based on 466 permutation tests. A plot of the test statistics is shown below, which has the expected shape.
-
-![h](figures/RRR_ordered_perm.png)
-*Test statistics for the ordered permutations tests in the slow-IID test. Passing result*
-
-For the fast IID test, they also do an ordered permutations test, and the result had a summary:
-```
-Broke file into 524,287 byte segments.
-Tested 5,242,870 bytes for each compressor.
-Using 3 compressors.
-Minimum NTS = 0.9998785864426587
-Maximum NTS = 1.0002466694875536
-Mean NTS = 0.999999368683967
-66.7% unchanged by shuffle.
-Probability of 15 heads and 15 tails = 1.0000
-
-
-*** Accept Ho. The data file looks like IID ***
-```
-This indiates a passing result.
-
-![d](figures/Permuted_Compressions_IID_Test.png)
-*Test statistics, and p-value (essentially) for ordered permutations tests in the fast-IID test. Passing result*
 
 ### Testing: Conclusion
 
