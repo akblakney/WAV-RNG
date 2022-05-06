@@ -11,7 +11,8 @@ def set_param_int(args, target, default_value):
     try:
         return int(args[args.index(target) + 1])
     except:
-        raise MyException('Failed to cast in in parameters')
+        raise MyException('Failed to cast in in parameters. ' +
+            'This argument requires an int and you did not provide one ..')
 
 def set_param_gen(args, target, default_value):
     if not target in args:
