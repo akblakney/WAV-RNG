@@ -31,8 +31,8 @@ This runs the "query" function, which will return how many available bytes can b
 
 This tells us that our file `noise.wav` can generate about 580MB of random data.
 
-Now, suppose we want only a fraction of those raw bytes. We can specify the starting and ending bytes to print with the `-s` and `-e` flags. Start is inclusive, while end is exclusive. In mathematical notation, the range: [start, end). Without specifying either, the start position defaults to zero, and the end position defaults to the maximum given the file-size. However, since the RNG involves hashing the entropy from atmospheric noise, a minimum of 128 bytes can be requested, i.e. the difference between `-e` and `-s` must be at least 128:
-`$python3 rng.py --in noise.wav -s 100 -e 228 --hex`
+Now, suppose we want only a fraction of those raw bytes. We can specify the starting and ending bytes to print with the `-s` and `-e` flags. Start is inclusive, while end is exclusive. In mathematical notation, the range: [start, end). Without specifying either, the start position defaults to zero, and the end position defaults to the maximum given the file-size. However, since the RNG involves hashing the entropy from atmospheric noise, a minimum of 64 bytes can be requested, i.e. the difference between `-e` and `-s` must be at least 64:
+`$python3 rng.py --in noise.wav -s 100 -e 165 --hex`
 output: `a06b1aa4...`.
 
 
