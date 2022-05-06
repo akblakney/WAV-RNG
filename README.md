@@ -57,11 +57,11 @@ Also, you can choose to run `rng.py` without a .wav file at all (although this k
 
 These option was inspired by [reallyreallyrandom](http://www.reallyreallyrandom.com/golden-rules/extract/), a project on TRNGs. The general idea is that [hash functions](https://en.wikipedia.org/wiki/Hash_function) serve as good randomness extractors. As will be discussed in the next section, the waveform of atmospheric noise does not take on the form of randomness we are looking for, in which each bit is 1 or 0 with .5 probability. The waveform does, however, contain entropy, which can be used in conjunction with a randomness extractor to generate [i.i.d.](https://en.wikipedia.org/wiki/Independent_and_identically_distributed_random_variables) samples, which is what we want.
 
-Adding the `--post-extract` flag will use the SHA256 hash function to extract 256 random bits from every 512 bits of processed .wav data. Thus, the user will get half as much data if they use this option. Note that the regular algorithm—which takes only the even bytes from the file (and even less if `--combine x` is used—is applied before the extraction occurs.
+Adding the `--post-extract` flag followed by an integer greater than 1 will use the SHA512 hash function to extract 512 random bits from every 512 * x bits of processed .wav data, where x is the integer given. Thus, `--post-extract 2` means 1024-byte blocks are hashed to produce 512-bit blocks; `--post-extract 4` means 2048-bit blocks are hashed to produce 512-bit blocks, and so on. Using this method thus decreases the efficiency in terms of the amount of output of the generator. Note that the regular algorithm—which takes only the even bytes from the file (and even less if `--combine x` is used—is applied before the extraction occurs.
 
-The `--post-extract` option can only increase the "quality" of the random numbers output, but decreases the efficiency by half.
+Overall, this option increases the robustness of the generator.
 
-Example usage: `$python3 rng.py --in noise.wav --combine 2 --post-extract --out random_data.bin`
+Example usage: `$python3 rng.py --in noise.wav --combine 2 --post-extract 2 --out random_data.bin`
 
 
 ## Methodology and Technical Details
