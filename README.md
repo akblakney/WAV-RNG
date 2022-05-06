@@ -238,11 +238,11 @@ In addition to a fail rate that deviates from the expected (in this case, 1%) ra
 ![hi](figures/comb1_NIST_pvals.png)
 
 For the full generator with the SHA-512 step, I only did half the tests, since the generator is less efficient in terms of data output in this mode, and also since the results should only exceed those on the less stringent setting of the generator without SHA-512. 
-**For the full generator with the SHA-512 post-processing step, 408 out of 410 tests passed. This is a 99.5% success rate.** As with the case without SHA-512, this is very close to the expected success rate of 99% for a perfect RNG. Below is a histogram of the p-values for the full generator with SHA-512 , which is quite close to the expected uniform distribution.
+**For the full generator with the SHA-512 post-processing step, 410 out of 410 tests passed. This is a 100% success rate.** As with the case without SHA-512, this is very close to the expected success rate of 99% for a perfect RNG. Below is a histogram of the p-values for the full generator with SHA-512 , which is quite close to the expected uniform distribution.
 
 ![hi](figures/sha512_NIST_pvals.png)
 
-Overall, with both `combine` settings, the fail-rate of the RNG was very close to the expected fail rate of 1% for an ideal generator. Furthermore, the distributions of p-values did not deviate significantly from the expected uniform distribution. Therefore, the statistical tests in this suite did not provide evidence that the data was not random.
+Overall, with with and without the SHA-512 post processing step, the fail-rate of the RNG was very close to the expected fail rate of 1% for an ideal generator. Furthermore, the distributions of p-values did not deviate significantly from the expected uniform distribution. Therefore, the statistical tests in this suite did not provide evidence that the data was not random.
 
 ### Dieharder Tests
 
