@@ -163,9 +163,9 @@ Overall, this step increases the robustness of the generator. Even if there are 
 
 This logical operation is relevant for us because it has some useful properties when it comes to randomness. Namely, the XOR operation preserves randomness. This means that, if I have a string of random bits (that is, generated from a random process, such that each bit is 1 with probability 0.5 and 0 with probability 0.5), and I XOR that string of bits with *any* (statistically independent) string of bits of the same length, the resulting string of bits will also be random. XOR is quite a powerful tool then: even if I XOR a string of random bits with a completely deterministic and non-random string of bits (say 11111..., i.e. a string which entirely consists of 1s), the result will still be random! There is one caveat that I mentioned above, which is that the two strings must be statistically independent, i.e., their probability distributions cannot depend on one another. Luckily, the way we are using XOR in this project adheres to this requirement.
 
-In the previous section I talked about the `--secrets` and `--grc` options which allow the user to combine the random bits generated from the .wav file with pseudorandom bits generated in the Python secrets module and GRC's PRNG. I also talked about the `--combine` option, which allows users to combine subsequent bytes in the .wav file to gain higher confidence that the output is random. The reason I provide these options is to increase the robustness of the RNG overall. Consider the idea that we may not be completely sure that the bits generated from the .wav files are entirely random. Perhaps the frequency we are tuning to during the recording process has a faint signal that has a pattern to it. Or perhaps the way that the waveform is being written to the .wav file has some properties that causes some patterns of bits to be more likely than others. In most instances this seems unlikely given the testing I have done on the .wav portion of the RNG, which I describe in more detail in the [next section](#testing), but it is always a possibility. The option of combining the random data from the .wav portion of the RNG with other sources of pseudorandom data is a way to counter this possibility. And the option of combining .wav bytes with subsequent .wav bytes helps ensure high entropy in the event that the even bytes of the .wav file contain less than the desired 8 bits/byte entropy.
+In the previous section I talked about the `--secrets` option which allows the user to combine the random bits generated from the .wav file with pseudorandom bits generated in the Python secrets module and GRC's PRNG. The reason I provide this option is to increase the robustness of the RNG overall. Consider the idea that we may not be completely sure that the bits generated from the .wav files are entirely random. Perhaps the frequency we are tuning to during the recording process has a faint signal that has a pattern to it. Or perhaps the way that the waveform is being written to the .wav file has some properties that causes some patterns of bits to be more likely than others. In most instances this seems unlikely given the testing I have done on the .wav portion of the RNG, which I describe in more detail in the [next section](#testing), but it is always a possibility. The option of combining the random data from the .wav portion of the RNG with other sources of pseudorandom data is a way to counter this possibility. And the option of combining .wav bytes with subsequent .wav bytes helps ensure high entropy in the event that the even bytes of the .wav file contain less than the desired 8 bits/byte entropy.
 
-As I mentioned, as long as two strings of bits are statistically independent—and here it is safe to say that the .wav data, the output of the Python secrets module, and the output of the GRC PRNG are mutually independent, satisfying this requirement—XOR-ing these bit strings together cannot eliminate any randomness that either of the bit strings already contained. In other words, if we XOR random data generated from the .wav file with pseudorandom data generated from the Python secrets module, the output will still be "just as random" as the data from the .wav file. I put "just as random" in quotes because talking about *how random* something is perhaps requires more mathematically robust language than is being used here, but the overall principle holds.
+As I mentioned, as long as two strings of bits are statistically independent—and here it is safe to say that the .wav data, the output of the Python secrets module are independent, satisfying this requirement—XOR-ing these bit strings together cannot eliminate any randomness that either of the bit strings already contained. In other words, if we XOR random data generated from the .wav file with pseudorandom data generated from the Python secrets module, the output will still be "just as random" as the data from the .wav file. I put "just as random" in quotes because talking about *how random* something is perhaps requires more mathematically robust language than is being used here, but the overall principle holds.
 
 
 ## Testing
@@ -197,26 +197,27 @@ To test this RNG, I picked out several popular testing suites for (P)RNGs and ap
 ### ENT: Pseudorandom Number Sequence Test Program
 In this section I apply the [ent](https://www.fourmilab.ch/random/) sequencing program on data generated by the .wav RNG. This testing program is not as rigorous as the NIST suite, and is not based on hypothesis testing or p-values. Instead, it outputs a brief summary of various test statistics and makes no adjudication on whether the data seems randomly generated or not.
 
-I used the ent program on several 1MB files generated by the .wav RNG. The full results are available in `results/ent/`, and an example of one output is below:
+I used the ent program on several 5MB files generated by the .wav RNG. The full results are available in `results/ent/`, and an example of one output is below:
 
 ```
-Entropy = 7.999820 bits per byte.
+Entropy = 7.999966 bits per byte.
 
 Optimum compression would reduce the size
-of this 1000000 byte file by 0 percent.
+of this 5242816 byte file by 0 percent.
 
-Chi square distribution for 1000000 samples is 250.05, and randomly
-would exceed this value 57.57 percent of the times.
+Chi square distribution for 5242816 samples is 248.96, and randomly
+would exceed this value 59.49 percent of the times.
 
-Arithmetic mean value of data bytes is 127.5314 (127.5 = random).
-Monte Carlo value for Pi is 3.139788559 (error 0.06 percent).
-Serial correlation coefficient is -0.000203 (totally uncorrelated = 0.0).
+Arithmetic mean value of data bytes is 127.5336 (127.5 = random).
+Monte Carlo value for Pi is 3.142968315 (error 0.04 percent).
+Serial correlation coefficient is 0.000539 (totally uncorrelated = 0.0).
+
 ```
 
 Most of the other ent results look similar. A full description of the fields of the test is available at the linked site, but briefly: 
-- entropy gives the information density of the file. A perfect score is 8 bits per byte, and the 7.999820 is quite close.
+- entropy gives the information density of the file. A perfect score is 8 bits per byte, and the 7.999966 is quite close.
 - Optimum compression gives how much the file could be compressed. Random data should not be able to be compressed at all, normally, since there should be very little detectable pattern in the data. The above result indicates 0% compression is possible, which is a perfect score. 
-- The Chi squared test statistic is, according to the authors, "extremely sensitive to errors in pseudorandom sequence generators ... If the percentage is greater than 99% or less than 1%, the sequence is almost certainly not random..." In short, extreme values indicate non-randomness, so a score of 58% is good.
+- The Chi squared test statistic is, according to the authors, "extremely sensitive to errors in pseudorandom sequence generators ... If the percentage is greater than 99% or less than 1%, the sequence is almost certainly not random..." In short, extreme values indicate non-randomness, so a score of 59% is good.
 - Arithmetic mean is simply the result of summing the bytes and computing an average. The [law of large numbers](https://en.wikipedia.org/wiki/Law_of_large_numbers) tells us that for large sequences of random numbers, this statistic should converge to the true mean, in this case 127.5. Scores close to this value are to be expected, whereas scores that stray far from this value could indicate non-randomness.
 - The Monte Carlo value for Pi section uses the data to approximate Pi via the [Monte Carlo method](https://en.wikipedia.org/wiki/Monte_Carlo_method). If a large sequence of data has a very inaccurate Monte Carlo approximation it is an indication that the data is not random. Our small error of 0.06% is well within the expected value of random data.
 - Serial correlation tells us how much subsequent bytes depend on each other. For random data, this should be very close to zero.
