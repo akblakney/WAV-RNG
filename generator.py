@@ -144,14 +144,14 @@ class WAVExtractGenerator(Generator):
         return 64 * ((filesize - 100) // 192)
 
 class MixGenerator(Generator):
-    # start and end give begin/ending 384 -> 64 bytes BLOCKS
+    # start and end give begin/ending 512 -> 64 bytes BLOCKS
     # not bytes themselves
     # e.g. start=0, end=2 will return 128 bytes,
-    # which correspond to the first block 0 -> 384, and second 384 -> 2*384
+    # which correspond to the first block 0 -> 512, and second 512 -> 2*512
     def __init__(self, inf, start, end, debug=False):
 
         # hard code const
-        self.block_size = 384 # hard code
+        self.block_size = 512 # hard code
         self.out_size = 64
 
         self.inf = inf
@@ -198,16 +198,18 @@ class MixGenerator(Generator):
     def bytes_from_block(self, b):
 
         ret = bytearray()
-        s1 = bytearray([b[i] for i in range(0, self.block_size, 6)])
-        s2 = bytearray([b[i] for i in range(2, self.block_size, 6)])
-        r = bytearray([b[i] for i in range(4, self.block_size, 6)])
+        s1 = bytearray([b[i] for i in range(0, self.block_size, 8)])
+        s2 = bytearray([b[i] for i in range(2, self.block_size, 8)])
+        s3 = bytearray([b[i] for i in range(4, self.block_size, 8)])
+        r = bytearray([b[i] for i in range(6, self.block_size, 8)])
 
         # for testing:
         if self.debug_only_raw:
             return r
 
         s1.extend(s2)
-        assert(len(s1) == 128) # input for SHA-512
+        s1.extend(s3)
+        assert(len(s1) == 192) # input for SHA-512
         assert(len(r) == self.out_size)   # output for SHA-512:w:w
 
         # hash s1

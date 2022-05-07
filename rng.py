@@ -25,6 +25,7 @@ def set_params():
 
     start = set_param_int(sys.argv, '-s', 0)
     end = set_param_int(sys.argv, '-e', None)
+    debug_raw = '--debug-raw' in sys.argv
 
 
     # set data mode
@@ -41,7 +42,7 @@ def set_params():
     # set output filename
     outf = set_param_gen(sys.argv, '--out', None)
 
-    return inf, start, end, data_mode, outf
+    return inf, start, end, data_mode, outf, debug_raw
 
 
 if __name__ == '__main__':
@@ -52,16 +53,16 @@ if __name__ == '__main__':
         exit()
 
     # set params
-    inf, start, end, data_mode, outf = set_params()
+    inf, start, end, data_mode, outf, debug_raw = set_params()
 
     # add the WAV EvenGenerator
-    m = MixGenerator(inf, start, end)
+    m = MixGenerator(inf, start, end, debug_raw)
 
     # query for how many bytes can be generated
     if '-q' in sys.argv:
-        available_bytes = m.query()
-        print('available bytes for {}: {}'.format(
-            inf, available_bytes))
+        available_blocks = m.query()
+        print('available 64-byte blocks for {}: {}'.format(
+            inf, available_blocks))
         exit()
 
     # generate
