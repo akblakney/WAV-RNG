@@ -18,7 +18,8 @@ class Generator(ABC):
 
     # calls self.generate
     def __init__(self):
-        self.generate()
+        pass
+#        self.generate()
 
     # return the generated raw bytes
     def get_bytes(self):
@@ -142,17 +143,97 @@ class WAVExtractGenerator(Generator):
 #            ((self.filesize - self.HEADER_LEN) // self.input_bytes)
         return 64 * ((filesize - 100) // 192)
 
-class EvenGenerator(Generator):
-    # comb gives how many subsequent (even) bytes to combine with xor
-    def __init__(self, inf, start, end, comb, extract=False, extract_ratio=2):
+class MixGenerator(Generator):
+    # start and end give begin/ending 384 -> 64 bytes BLOCKS
+    # not bytes themselves
+    # e.g. start=0, end=2 will return 128 bytes,
+    # which correspond to the first block 0 -> 384, and second 384 -> 2*384
+    def __init__(self, inf, start, end, debug=False):
+
+        # hard code const
+        self.block_size = 384 # hard code
+        self.out_size = 64
+
         self.inf = inf
-        filesize = os.path.getsize(inf)
-        self.extract = extract
-        self.extract_ratio = extract_ratio
-        avail = self.query(filesize, comb, self.extract, self.extract_ratio)
+        self.filesize = os.path.getsize(self.inf)
+        self.total_blocks = self.query()
         self.start = start
         self.end = end
-        self.comb = comb
+        self.debug_only_raw = debug
+
+        if self.end is None:
+            self.end = self.total_blocks
+        if self.start is None:
+            self.start = 0
+
+        self.num_blocks = self.end - self.start
+
+        # verify start/end input
+        if self.start < 0 or self.start >= self.total_blocks:
+            raise MyException('invalid start')
+        if self.end < 1 or self.end > self.total_blocks:
+            raise MyException('invalid end')
+        if self.end <= self.start:
+            raise MyException('start must be less than end')
+
+
+    def generate(self):
+        ret = bytearray()
+        file = open(self.inf, 'rb')
+
+        # skip 100 byte header and up til start
+        _ = file.read(100 + self.block_size * self.start)
+
+        # each iter converts 384 -> 64 bytes
+        for i in range(self.num_blocks):
+            curr_bytes = file.read(self.block_size)
+            curr_bytes = self.bytes_from_block(curr_bytes)
+            assert(len(curr_bytes) == self.out_size)
+            ret.extend(curr_bytes)
+        assert(len(ret) == self.num_blocks * self.out_size)
+
+        self.data = ret
+        file.close()
+
+    def bytes_from_block(self, b):
+
+        ret = bytearray()
+        s1 = bytearray([b[i] for i in range(0, self.block_size, 6)])
+        s2 = bytearray([b[i] for i in range(2, self.block_size, 6)])
+        r = bytearray([b[i] for i in range(4, self.block_size, 6)])
+
+        # for testing:
+        if self.debug_only_raw:
+            return r
+
+        s1.extend(s2)
+        assert(len(s1) == 128) # input for SHA-512
+        assert(len(r) == self.out_size)   # output for SHA-512:w:w
+
+        # hash s1
+        hash_out = sha512(s1).digest()
+        assert(len(hash_out) == len(r))
+
+        # xor
+        ret = bytes(a ^ b for (a,b) in zip(hash_out, r))
+
+        return ret
+
+
+    # gives the number of 384/64 byte blocks available
+    def query(self):
+        return (self.filesize - 100) // self.block_size
+
+class EvenGenerator(Generator):
+    # comb gives how many subsequent (even) bytes to combine with xor
+    def __init__(self, inf, start, end, extract=True):
+        self.inf = inf
+        filesize = os.path.getsize(inf)
+        self.extract_ratio = 2 # hard code for now
+        avail = self.query(filesize)
+        self.start = start
+        self.end = end
+        self.extract = extract
 
         if end is None:
             self.end = avail
@@ -163,13 +244,15 @@ class EvenGenerator(Generator):
             raise MyException('invalid end')
         if self.start >= self.end:
             raise MyException('start >= self.end')
-        if comb < 1:
-            raise MyException('comb must be > 0')
+
+        # for here, double start and end since dont' need to worry
+        # about hash extract
+        self.start *= self.extract_ratio
+        self.end *= self.extract_ratio
+
 
         self.num_bytes = self.end - self.start
         super().__init__()
-        if self.extract:
-            self.hash_extract()
 
     # get only the even numbered bytes from the file
     # combine self.comb subsequent bytes w xor to form one byte
@@ -177,25 +260,26 @@ class EvenGenerator(Generator):
         ret = bytearray()
         file = open(self.inf, 'rb')
 
-        _ = file.read(100)
+        # skip over bytes
+        # * 2 because of skipping odd
+        _ = file.read(100 + self.start * 2)
         byte = file.read(1)
+
+
 
         # each iter of this loop adds one byte
         for i in range(self.num_bytes):
-            curr_byte = 0
-            for j in range(self.comb):
-                # byte is even numbered byte
-#                ret.append(ord(byte))
-                curr_byte = curr_byte ^ ord(byte)
+            # byte is even numbered byte
+            ret.append(ord(byte))
 
-                # skip odd yte
-                _ = file.read(1)
-                byte = file.read(1)
-
-            # we should have xored self.comb bytes to end with curr_byte
-            ret.append(curr_byte)
+            # skip odd byte
+            _ = file.read(1)
+            byte = file.read(1)
 
         self.data = ret
+
+        if self.extract:
+            self.hash_extract()
 
     # feed in 1024 bit blocks into sha512, get 512 bit blocks out
     # 512 bits = 64 bytes; 1024 bits = 128 bytes
@@ -216,10 +300,12 @@ class EvenGenerator(Generator):
 
 
     @staticmethod
-    def query(filesize, comb, extract, extract_ratio):
-        ret = (filesize - 100) // (2 * comb)
-        #if extract:
-        #    ret //= extract_ratio
+    def query(filesize):
+        # the 100 is for the header
+        # the 4 = 2 * 2
+        # 2 for the fact that only even bytes
+        # 2 for the fact that hash extract
+        ret = (filesize - 100) // 4
         return ret
 
 
@@ -389,9 +475,8 @@ class BaseGenerator(Generator):
 
     # sets num_bytes
     # initializes self.generators
-    def __init__(self, num_bytes=None):
+    def __init__(self):
         self.generators = []
-        self.num_bytes = num_bytes
 
     # adds g to self.generators
     def add_generator(self, g):
