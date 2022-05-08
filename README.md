@@ -43,7 +43,7 @@ output: `a06b1aa4e775c1...`.
 
 ### Debug
 
-Using the `--debug-raw` flag causes only the even bytes of the .wav file, without the SHA-512 post-processing step to be applied. This can be used for debugging purposes to ensure that the raw data still contains sufficient entropy for the RNG to work optimally.
+Using the `--debug-raw` flag causes only the even bytes of the .wav file, without the SHA-512 post-processing step, to be output. This can be used for debugging purposes to ensure that the raw data still contains sufficient entropy for the RNG to work optimally. For example, use the `rand_test.py` script on a file generated with `--debug-raw`, or use one of the other randomness/entropy tests discussed in this write-up.
 
 ## Methodology and Technical Details
 ### Intuition
