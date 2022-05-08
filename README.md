@@ -148,9 +148,9 @@ With the paq8px compression tool, the even bytes were not able to be compressed 
 
 For the min-entropy, I used the `rand_test.py` script (included) on the even and odd bytes of the .wav file. The even bytes received a score of 7.93 bits/byte, while the odd bytes received a score of 5.57 bits/byte.
 
-To summarize, we saw the odd bytes were highly autocorrelated, and had a non-uniform byte distribution. We further saw that the odd bytes failed two i.i.d. tests, and appear to have an entropy ranging from 2 - 5.5 bits/byte. On the other hand, the even bytes were not autocorrelated and had a uniform distribution. Further, they passed two i.i.d. tests, and seem to have an entropy close to 8 bits/byte. All in all, it is clear that the even bytes are a good source of entropy, if not truly random data (i.i.d.).
+To summarize, we saw the odd bytes were highly autocorrelated, and had a non-uniform byte distribution. We further saw that the odd bytes failed two i.i.d. tests, and appear to have an entropy ranging from 2 - 5.5 bits/byte. On the other hand, the even bytes were not autocorrelated and had a uniform distribution. Further, they passed two i.i.d. tests, and seem to have an entropy close to 8 bits/byte. All in all, it is clear that the even bytes are a good source of entropy, if not truly random data (i.i.d.). (Later, in the [testing](#testing) section I discuss a few indications that the even bytes on their own are not completely random, but it is clear that they are a good source of entropy that we can use to get i.i.d. random samples).
 
-Therefore, with reason to believe the even bytes are random, I used this as the basis of the RNG: given a .wav file, simply take the even bytes and output them as random data. There is one post-processing catch: before passing off the even bytes as random, they are fed to the SHA-512 hash function in 128-byte blocks to produce 64-byte blocks. This is discussed in the next subsection.
+Therefore, with reason to believe the even bytes are random, I used this as the basis of the RNG: given a .wav file, simply take the even bytes and output them as random data. There is one post-processing catch: before passing off the even bytes as random, they are fed to the SHA-512 hash function in 192-byte blocks to produce 64-byte blocks. This is discussed in the next subsection.
 
 ### Extracting randomness with hash functions
 
@@ -250,19 +250,7 @@ Arithmetic mean value of data bytes is 127.5047 (127.5 = random).
 Monte Carlo value for Pi is 3.141454986 (error 0.00 percent).
 Serial correlation coefficient is 0.000004 (totally uncorrelated = 0.0).
 ```
-Most of the results are in line with what we would expect from random data. There is one exception: the raw version has a Chi square distribution with p-value 0.01 percent. This is very small, and an indication that the data is not random.
-
-
-Most of the other ent results look similar. A full description of the fields of the test is available at the linked site, but briefly: 
-- entropy gives the information density of the file. A perfect score is 8 bits per byte, and the 7.999966 is quite close.
-- Optimum compression gives how much the file could be compressed. Random data should not be able to be compressed at all, normally, since there should be very little detectable pattern in the data. The above result indicates 0% compression is possible, which is a perfect score. 
-- The Chi squared test statistic is, according to the authors, "extremely sensitive to errors in pseudorandom sequence generators ... If the percentage is greater than 99% or less than 1%, the sequence is almost certainly not random..." In short, extreme values indicate non-randomness, so a score of 59% is good.
-- Arithmetic mean is simply the result of summing the bytes and computing an average. The [law of large numbers](https://en.wikipedia.org/wiki/Law_of_large_numbers) tells us that for large sequences of random numbers, this statistic should converge to the true mean, in this case 127.5. Scores close to this value are to be expected, whereas scores that stray far from this value could indicate non-randomness.
-- The Monte Carlo value for Pi section uses the data to approximate Pi via the [Monte Carlo method](https://en.wikipedia.org/wiki/Monte_Carlo_method). If a large sequence of data has a very inaccurate Monte Carlo approximation it is an indication that the data is not random. Our small error of 0.06% is well within the expected value of random data.
-- Serial correlation tells us how much subsequent bytes depend on each other. For random data, this should be very close to zero.
-
-As I mentioned, this is not a very rigorous test, but can serve as a sanity check that our generator is performing decently.
-
+Most of the results are in line with what we would expect from random data. There is one exception: the raw version has a Chi square distribution with p-value 0.01 percent. This is very small, and an indication that the data is not random. This is one of the few indications I've seen that the raw (even) bytes from the .wav files are not completely random. While they pass many other tests (such as those discussed later in those section), a low p-value for the Chi square distribution is one that I've seen on multiple occassions during testing, and seems to indicate non-randomness. Nonetheless, the entropy of the bytes is still enough to feed SHA-512 for a good random output.
 
 ### Nist Randomness Test Suite
 In this section I discuss the results of NIST's *A Statistical Test Suite for Random and Pseudorandom Number Generators for Cryptographic Applications* applied to the output of my RNG. You can find the official posting of this project by NIST [here](https://www.nist.gov/publications/statistical-test-suite-random-and-pseudorandom-number-generators-cryptographic), which has a link to download the PDF of their document. For this project I used [this](https://github.com/stevenang/randomness_testsuite) implementation of the NIST test suite by Steven Kho Ang and Spence Churchill.
@@ -282,7 +270,7 @@ For the full generator with the SHA-512 step, I only did half the tests, since t
 
 ![hi](figures/sha512_NIST_pvals.png)
 
-Overall, with with and without the SHA-512 post processing step, the fail-rate of the RNG was very close to the expected fail rate of 1% for an ideal generator. Furthermore, the distributions of p-values did not deviate significantly from the expected uniform distribution. Therefore, the statistical tests in this suite did not provide evidence that the data was not random.
+Overall, both with and without the SHA-512 post processing step, the fail-rate of the RNG was very close to the expected fail rate of 1% for an ideal generator. Furthermore, the distributions of p-values did not deviate significantly from the expected uniform distribution. Therefore, the statistical tests in this suite did not provide evidence that the data was not random.
 
 ### Dieharder Tests
 
