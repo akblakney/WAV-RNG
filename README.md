@@ -256,7 +256,7 @@ Arithmetic mean value of data bytes is 127.5047 (127.5 = random).
 Monte Carlo value for Pi is 3.141454986 (error 0.00 percent).
 Serial correlation coefficient is 0.000004 (totally uncorrelated = 0.0).
 ```
-Most of the results are in line with what we would expect from random data. There is one exception: the raw version has a Chi square distribution with p-value 0.01 percent. This is very small, and an indication that the data is not random. This is one of the few indications I've seen that the raw (even) bytes from the .wav files are not completely uniform random. While they pass many other tests (such as those discussed later in those section), a low p-value for the Chi square distribution is one that I've seen on multiple occassions during testing, and seems to indicate non-randomness. Nonetheless, the entropy of the bytes is still enough to feed SHA-512 for a good random output.
+Most of the results are in line with what we would expect from random data. There is one exception: the raw version has a Chi square distribution with p-value 0.01 percent. This is very small, and an indication that the data is not random. This is one of the few indications I've seen that the raw (even) bytes from the .wav files are not completely uniform random. While they pass many other tests (such as those discussed later in this section), a low p-value for the Chi square distribution is one that I've seen on multiple occassions during testing, and seems to indicate non-randomness. Nonetheless, the entropy of the bytes is still enough to feed SHA-512 for a good random output.
 
 ### Nist Randomness Test Suite
 In this section I discuss the results of NIST's *A Statistical Test Suite for Random and Pseudorandom Number Generators for Cryptographic Applications* applied to the output of my RNG. You can find the official posting of this project by NIST [here](https://www.nist.gov/publications/statistical-test-suite-random-and-pseudorandom-number-generators-cryptographic), which has a link to download the PDF of their document. For this project I used the official implementation by NIST found [here](https://csrc.nist.gov/Projects/Random-Bit-Generation/Documentation-and-Software), and also [this](https://github.com/stevenang/randomness_testsuite) implementation of the NIST test suite by Steven Kho Ang and Spence Churchill. 
@@ -278,7 +278,7 @@ For the full generator with the SHA-512 step, I only did half the tests since th
 
 ![hi](figures/sha512_NIST_pvals.png)
 
-Overall, both with and without the SHA-512 post processing step, the fail-rate of the RNG was very close to the expected fail rate of 1% for an ideal generator. Furthermore, the distributions of p-values did not deviate significantly from the expected uniform distribution. Therefore, the statistical tests in this suite did not provide evidence that the data was not random. The testing done with the official implementation of the test suite by NIST show very similar results.
+Overall, both with and without the SHA-512 post processing step, the fail-rate of the RNG was very close to the expected fail rate of 1% for an ideal generator. Furthermore, the distributions of p-values did not deviate significantly from the expected uniform distribution. Therefore, the statistical tests in this suite did not provide evidence that the data was not random. The testing done with the official implementation of the test suite by NIST shows very similar results.
 
 ### Dieharder Tests
 
