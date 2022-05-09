@@ -6,10 +6,11 @@ import matplotlib.pyplot as plt
 import sys
 inf = sys.argv[1]
 file = open(inf,'rb')
-_ = file.read(100)
+HEADER_LEN = 2
+_ = file.read(HEADER_LEN)
 byte = file.read(1) # start at 0th byte
 i = 0
-N = int(400)
+N = int(9000)
 even = []
 odd = []
 

@@ -1,3 +1,15 @@
+'''
+A simple program to test whether the contents of a binary file are random.
+This is not a rigorous test and should not be used as a replacement for
+more stringent randomness tests like NIST's randomness test suite
+or dieharder. It's main advantage is that users can easily see plots
+of the distribution of bytes, or ascii/decimal digits derived from
+the raw bytes, as well as a calculation of the min-entropy of bytes.
+
+Run with python3 rand_test <filename>
+
+'''
+
 import math
 import matplotlib.pyplot as plt
 import sys
@@ -11,6 +23,7 @@ def init_hex_dict():
         ret[c] = 0
     return ret
 
+# returns dictionary with all byte counts
 def byte_counts(inf):
     file = open(inf, 'rb')
     counts = {}
@@ -44,6 +57,7 @@ def hex_counts(inf):
     file.close()
     return counts
 
+# return dictionary with ascii character counts
 def ascii_counts(inf):
     file = open(inf, 'rb')
     byte = file.read(1)
@@ -59,6 +73,7 @@ def ascii_counts(inf):
     file.close()
     return counts
 
+# return dictionary with 2-digit decimal numbers counts
 def digit_counts(inf):
     file = open(inf, 'rb')
     byte = file.read(1)
@@ -74,6 +89,7 @@ def digit_counts(inf):
     file.close()
     return counts
 
+# return number of changes in binary string
 def changes_in_binary_string(s):
     count = 0
     for i in range(len(s) - 1):
@@ -81,6 +97,7 @@ def changes_in_binary_string(s):
             count += 1
     return count
 
+# return number of runs in file (binary)
 def runs(inf):
     file = open(inf, 'rb')
     change_count = 0
@@ -107,18 +124,15 @@ def runs(inf):
 
 if __name__ == '__main__':
 
-    #inf = './rand/noise8.rand'
     inf = sys.argv[1]
     # hex counts
     print('--- hex counts---')
     counts = hex_counts(inf)
     print(counts)
     print()
-    #plt.bar(range(len(counts)), list(counts.values()), align='center')
-    #plt.xticks(range(len(counts)), list(counts.keys()))
 
 
-    # byte counts
+    # byte counts and min-entropy
     print('--- byte counts---')
     counts = byte_counts(inf)
     plt.bar(range(len(counts)), list(counts.values()), align='center')

@@ -3,6 +3,24 @@ This file contains methods that bytes to/from various different formats,
 such as hexadecimal digits, ascii, decimal, etc.
 '''
 
+import numpy as np
+
+# return an exponential random variable from bytes b
+# with parameter l
+def exponential(b, l):
+    u = uniform(b)
+    return -1 * np.log(u) / l
+
+# return uniform [0,1) from
+# bytearray b
+def uniform(b):
+    ret = 1
+    mult = 1
+    for x in b:
+        ret += x * mult
+        mult *= 256
+    return ret / (256 ** len(b))
+
 # get hex from single byte
 def hex_from_byte(b):
     return hex(b)[2:].rjust(2,'0')
@@ -28,16 +46,21 @@ def binary_from_bytes(b):
 
 # get digit from single byte
 def digit_from_byte(x):
+#    print(x)
     if x > 199:
+ #       print('ret none')
         return None
     # single digit
     if x < 10:
+  #      print('ret < 10')
         return '0{}'.format(x)
     # two digits
     elif x < 100:
+   #     print('ret < 100')
         return str(x)
     # three digits
     elif x >= 100:
+    #    print('ret >= 100')
         return str(x)[1:]
     else:
         assert(False)

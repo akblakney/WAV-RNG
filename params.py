@@ -1,5 +1,7 @@
-class MyException(Exception):
-    pass
+# contains methods used to read params from command line arguments
+
+from my_exception import MyException
+
 
 # args is args list
 # target is string to search for in args list

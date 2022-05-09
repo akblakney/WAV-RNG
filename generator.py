@@ -1,5 +1,13 @@
 '''
-This file contains classes used to generate random numbers
+This file contains classes used to generate random numbers.
+Generator is an abstract class with an abstract method generate()
+which should populate self.data with bytearray. Contains
+methods for dipslaying bytes in other formats.
+
+MixGenerator is used to generate random bytes from .wav files.
+
+SecretsGenerator is used to generate pseudorandom numbers from the Python
+secrets module (A CSPRNG)
 '''
 
 from hashlib import sha256, sha512
@@ -48,20 +56,6 @@ class Generator(ABC):
     def generate(self):
         pass
 
-# subclass of the Generator class which generates random bytes by
-# pulling from the grc passwords (PRNG) website
-class GRCGenerator(Generator):
-
-    def __init__(self, num_bytes):
-        if num_bytes > 32:
-            raise MyException('Error: GRCGenerator can only generate 32 bytes')
-        self.num_bytes = num_bytes
-        super().__init__()
-
-    def generate(self):
-        h = hex_from_grc()[:2*self.num_bytes]
-        b = bytes.fromhex(h)
-        self.data = b
 
 # subclass of Generator
 # generates random bytes via the secrets module
@@ -69,88 +63,26 @@ class SecretsGenerator(Generator):
     
     def __init__(self, num_bytes):
         self.num_bytes = num_bytes
+        self.data = None
         super().__init__()
 
     def generate(self):
         self.data = secrets.token_bytes(self.num_bytes)
-
-
-class WAVExtractGenerator(Generator):
-    def __init__(self,inf,start=0,end=None):
-        self.inf = inf
-        self.filesize = os.path.getsize(self.inf)
-        self.HEADER_LEN = 100
-
-        # sha 512 specific values for now
-        self.bytes_per_byte = 3
-        self.input_bytes = 192
-        self.output_bytes = 64
-        self.available_bytes = self.output_bytes * \
-            ((self.filesize - self.HEADER_LEN) // self.input_bytes)
-        self.start = start
-        if end is None:
-            self.end = self.available_bytes
-        else:
-            self.end = end
-
-        self.num_bytes = self.end - self.start
-
-        # verify start and end
-        if self.start < 0 or self.start >= self.available_bytes:
-            raise MyException('Invalid start position for wav file')
-        if self.end < 64  or self.end > self.available_bytes:
-            raise MyException('Invalid end position for wav file')
-        if self.start >= self.end:
-            raise MyException('Wav start position must be less than wav end pos')
-        if self.num_bytes % self.output_bytes != 0:
-            raise MyException('With only extraction mode, ' +
-                'number of bytes must be multiple of {}'.format(self.output_bytes))
-
-        super().__init__()
-
-    def generate(self):
-
-        ret = bytearray()
-
-        # start_index and end_index idex the bytes on the WAV file,
-        # NOT the bytes to be returned
-        # we're not really using these here that much ...
-        start_index = self.HEADER_LEN + self.start * (self.input_bytes // self.output_bytes)
-        end_index   = self.HEADER_LEN +   self.end * (self.input_bytes // self.output_bytes)
-
-        file = open(self.inf, 'rb')
-
-        # skip bytes
-        _ = file.read(start_index)
-        index = start_index
-
-        # each iter generates self.output_bytes bytes
-        for i in range(self.num_bytes // self.output_bytes):
-
-            wav_bytes = file.read(self.input_bytes)
-            new_bytes = sha512(wav_bytes).digest()
-            assert(len(new_bytes) == self.output_bytes)
-            ret.extend(new_bytes)
-
-        assert(len(ret) == self.num_bytes)
-
-        file.close()
-        self.data = ret
-
-    @staticmethod
-    def query(filesize):
-#        return self.output_bytes * \
-#            ((self.filesize - self.HEADER_LEN) // self.input_bytes)
-        return 64 * ((filesize - 100) // 192)
 
 class MixGenerator(Generator):
     # start and end give begin/ending 512 -> 64 bytes BLOCKS
     # not bytes themselves
     # e.g. start=0, end=2 will return 128 bytes,
     # which correspond to the first block 0 -> 512, and second 512 -> 2*512
-    def __init__(self, inf, start, end, debug=False):
+    def __init__(self, inf, start, end, debug=False, header_len=100):
 
         # hard code const
+        self.header_len = header_len
+        # verify header
+        if self.header_len < 100:
+            raise MyException('Header length too short. Must be at least 100')
+        if self.header_len % 2 != 0:
+            raise MyException('Header length should be even..')
         self.block_size = 512 # hard code
         self.out_size = 64
 
@@ -176,15 +108,18 @@ class MixGenerator(Generator):
         if self.end <= self.start:
             raise MyException('start must be less than end')
 
+        self.data = None
+
 
     def generate(self):
         ret = bytearray()
         file = open(self.inf, 'rb')
 
         # skip 100 byte header and up til start
-        _ = file.read(100 + self.block_size * self.start)
+        _ = file.read(self.header_len + self.block_size * self.start)
 
-        # each iter converts 384 -> 64 bytes
+        # each iter converts self.block_size -> self.out_size bytes
+        # (for here this is 512 bytes -> 64 bytes)
         for i in range(self.num_blocks):
             curr_bytes = file.read(self.block_size)
             curr_bytes = self.bytes_from_block(curr_bytes)
@@ -224,251 +159,7 @@ class MixGenerator(Generator):
 
     # gives the number of 384/64 byte blocks available
     def query(self):
-        return (self.filesize - 100) // self.block_size
-
-class EvenGenerator(Generator):
-    # comb gives how many subsequent (even) bytes to combine with xor
-    def __init__(self, inf, start, end, extract=True):
-        self.inf = inf
-        filesize = os.path.getsize(inf)
-        self.extract_ratio = 2 # hard code for now
-        avail = self.query(filesize)
-        self.start = start
-        self.end = end
-        self.extract = extract
-
-        if end is None:
-            self.end = avail
-
-        if self.start < 0 or self.start >= avail:
-            raise MyException('invalid self.start')
-        if self.end < 1 or self.end > avail:
-            raise MyException('invalid end')
-        if self.start >= self.end:
-            raise MyException('start >= self.end')
-
-        # for here, double start and end since dont' need to worry
-        # about hash extract
-        self.start *= self.extract_ratio
-        self.end *= self.extract_ratio
-
-
-        self.num_bytes = self.end - self.start
-        super().__init__()
-
-    # get only the even numbered bytes from the file
-    # combine self.comb subsequent bytes w xor to form one byte
-    def generate(self):
-        ret = bytearray()
-        file = open(self.inf, 'rb')
-
-        # skip over bytes
-        # * 2 because of skipping odd
-        _ = file.read(100 + self.start * 2)
-        byte = file.read(1)
-
-
-
-        # each iter of this loop adds one byte
-        for i in range(self.num_bytes):
-            # byte is even numbered byte
-            ret.append(ord(byte))
-
-            # skip odd byte
-            _ = file.read(1)
-            byte = file.read(1)
-
-        self.data = ret
-
-        if self.extract:
-            self.hash_extract()
-
-    # feed in 1024 bit blocks into sha512, get 512 bit blocks out
-    # 512 bits = 64 bytes; 1024 bits = 128 bytes
-    def hash_extract(self):
-        HASH_SIZE = 64  # constant for SHA512
-        inp_size = HASH_SIZE * self.extract_ratio
-        ret = bytearray()
-        i = 0
-        while i + inp_size <= len(self.data):
-            curr = sha512(self.data[i:i+inp_size]).digest()
-            assert(len(curr) == HASH_SIZE)
-            ret.extend(curr)
-            i += inp_size
-#        print(len(ret))
-#        print( HASH_SIZE * (len(self.data) // inp_size))
-        assert(len(ret) == HASH_SIZE * (len(self.data) // inp_size))
-        self.data = ret
-
-
-    @staticmethod
-    def query(filesize):
-        # the 100 is for the header
-        # the 4 = 2 * 2
-        # 2 for the fact that only even bytes
-        # 2 for the fact that hash extract
-        ret = (filesize - 100) // 4
-        return ret
-
-
-class OddGenerator(Generator):
-    def __init__(self, inf,start,end):
-        self.inf = inf
-        filesize = os.path.getsize(inf)
-        avail = self.query(filesize)
-        self.start = start
-        self.end = end
-        if end is None:
-            self.end = avail
-
-        if self.start < 0 or self.start >= avail:
-            raise MyException('invalid self.start')
-        if self.end < 1 or self.end > avail:
-            raise MyException('invalid start')
-        if self.start >= self.end:
-            raise MyException('start >= self.end')
-
-        self.num_bytes = self.end - self.start
-        super().__init__()
-
-    def generate(self):
-        ret = bytearray()
-        file = open(self.inf, 'rb')
-
-        _ = file.read(101)
-        byte = file.read(1)
-
-        for i in range(self.num_bytes):
-            # even numbered byte
-            ret.append(ord(byte))
-
-            try:
-                _ = file.read(1)
-                byte = file.read(1)
-            except BaseException:
-                self.data = ret
-                return
-        self.data = ret
-
-    @staticmethod
-    def query(filesize):
-        return (filesize - 100) // 2
-
-
-# NOTE: BY NOW THIS IS DEFUCT. EvenGenerator is bettter.
-# subclass of Generator
-# generates random bytes via .wav files (of atmospheric noise)
-# inf is input wav filename
-# start and end give start and end of available bytes to get
-# use_bit gives which bit to use in 16-bit wav chunks. If none,
-# then xor all 16 bits
-# bpb gives bits per block. Default is 16, but can be larger multiple
-# of 16.
-class WAVGenerator(Generator):
-    
-    def __init__(self, inf, start=0, end=None, use_bit=None, bpb=16):##
-
-        # set defaults
-        self.HEADER_LEN = 100
-
-        self.inf = inf
-        self.filesize = os.path.getsize(self.inf)
-        self.bpb = bpb
-        self.available_bytes = (self.filesize - self.HEADER_LEN) // self.bpb
-        self.start = start
-        if end is None:
-            self.end = self.available_bytes
-        else:
-            self.end = end
-        self.use_bit = use_bit
-        
-        self.num_bytes = self.end - self.start
-
-        # verify start and end
-        if self.start < 0 or self.start >= self.available_bytes:
-            raise MyException('Invalid start position for wav file')
-        if self.end < 1 or self.end > self.available_bytes:
-            raise MyException('Invalid end position for wav file')
-        if self.start >= self.end:
-            raise MyException('Wav start position must be less than wav end pos')
-
-        # verify use_bit
-        if not self.use_bit is None:
-            if self.use_bit >= self.bpb:
-                raise MyException('use_bit must be less than bits per block')
-
-        super().__init__()
-
-    def generate(self):
-        ret = bytearray()
-
-        # start_index and end_index idex the bytes on the WAV file,
-        # NOT the bytes to be returned
-        start_index = self.HEADER_LEN + self.start * self.bpb
-        end_index   = self.HEADER_LEN +   self.end * self.bpb
-
-        file = open(self.inf, 'rb')
-
-        # skip bytes
-        _ = file.read(start_index)
-        index = start_index
-
-        # each iter generates a byte
-        for i in range(self.num_bytes):
-
-            wav_bytes = file.read(self.bpb)
-            new_byte = self.byte_from_wav_bytes(wav_bytes)
-            ret.append(new_byte)
-            index += self.bpb
-
-        assert(index == end_index)
-        assert(len(ret) == self.end - self.start)
-
-        file.close()
-        self.data = ret
-
-    # returns one byte generated from wb
-    # take in self.bpb wav bytes, output single generated byte
-    def byte_from_wav_bytes(self, wb):
-        assert len(wb) == self.bpb
-        bitstring = ''
-
-        # outer loop will run exactly 8 times, each time adding a bit
-        for i in range(0, self.bpb, self.bpb // 8):
-            curr_bits = ''
-
-            # inner loop
-            # each iter will process one byte of wav data
-            # each iter will add 8 bits to curr_bits
-            for j in range(self.bpb // 8):
-                curr_bits = curr_bits + bin(wb[i+j])[2:].rjust(8,'0')
-
-            # this is because bpb wav bits are needed to generate one randombit
-            assert(len(curr_bits) == self.bpb)
-
-            # no use_bit to use XOR Method
-            if self.use_bit is None:
-                temp_sum = 0
-                next_bit = '0'
-                for x in curr_bits:
-                    if x == '1':
-                        temp_sum += 1
-                if temp_sum % 2 == 1:
-                    next_bit = '1'
-
-            # use only the use_bit
-            else:
-                next_bit = curr_bits[self.use_bit]
-            
-            bitstring = bitstring + next_bit
-
-        # now we should have a completed byte
-        assert(len(bitstring) == 8)
-        return int(bitstring, 2)
-
-    @staticmethod
-    def query(filesize, bpb):
-        return (filesize - 100) // bpb
+        return (self.filesize - self.header_len) // self.block_size
 
 # generates random bytes by xor-ing the generated bytes from one or more
 # sub-generators in self.generators
@@ -497,6 +188,11 @@ class BaseGenerator(Generator):
     def generate(self):
 
         assert(len(self.generators) > 0)
+
+        # generate for each
+        for g in self.generators:
+            if g.data is None:
+                g.generate()
 
         ret = self.generators[0].get_bytes()
         for i in range(1,len(self.generators)):

@@ -8,8 +8,7 @@ import sys
 import os
 from params import set_param_int, set_param_gen
 from my_exception import MyException
-from generator import BaseGenerator, SecretsGenerator, GRCGenerator, \
-    WAVGenerator, WAVExtractGenerator, EvenGenerator, OddGenerator, MixGenerator
+from generator import BaseGenerator, SecretsGenerator, MixGenerator
 
 # prints out the help statement
 def my_help():
@@ -26,6 +25,7 @@ def set_params():
     start = set_param_int(sys.argv, '-s', 0)
     end = set_param_int(sys.argv, '-e', None)
     debug_raw = '--debug-raw' in sys.argv
+    header_len = set_param_int(sys.argv, '--header-len', 100)
 
 
     # set data mode
@@ -42,7 +42,7 @@ def set_params():
     # set output filename
     outf = set_param_gen(sys.argv, '--out', None)
 
-    return inf, start, end, data_mode, outf, debug_raw
+    return inf, start, end, data_mode, outf, debug_raw, header_len
 
 
 if __name__ == '__main__':
@@ -53,10 +53,10 @@ if __name__ == '__main__':
         exit()
 
     # set params
-    inf, start, end, data_mode, outf, debug_raw = set_params()
+    inf, start, end, data_mode, outf, debug_raw, header_len = set_params()
 
     # add the WAV EvenGenerator
-    m = MixGenerator(inf, start, end, debug_raw)
+    m = MixGenerator(inf, start, end, debug_raw, header_len)
 
     # query for how many bytes can be generated
     if '-q' in sys.argv:
@@ -65,17 +65,12 @@ if __name__ == '__main__':
             inf, available_blocks))
         exit()
 
-    # generate
-    m.generate()
-    
     # create base generator and add additional ones
     base = BaseGenerator()
 
-    num_bytes = len(m.data)
+    num_bytes = m.num_blocks * 64 # number of bytes per block
     base.add_generator(m)
 
-    if '--grc' in sys.argv:
-        base.add_generator(GRCGenerator(num_bytes))
     if '--secrets' in sys.argv:
         base.add_generator(SecretsGenerator(num_bytes))
 
