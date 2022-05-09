@@ -6,7 +6,7 @@ This is the driver script which can be used to generate random numbers from
 
 import sys
 import os
-from params import set_param_int, set_param_gen
+from params import set_param_int, set_param_gen, set_param_bool
 from my_exception import MyException
 from generator import BaseGenerator, SecretsGenerator, MixGenerator
 
@@ -20,11 +20,12 @@ def my_help():
 # return params from command line arguments
 def set_params():
     # get args
-    inf = set_param_gen(sys.argv, '--in', None)
+    inf = set_param_gen(sys.argv, '--in', None, \
+        'valid filename must follow --in flag.')
 
     start = set_param_int(sys.argv, '-s', 0)
     end = set_param_int(sys.argv, '-e', None)
-    debug_raw = '--debug-raw' in sys.argv
+    debug_raw = set_param_bool(sys.argv, '--debug-raw')
     header_len = set_param_int(sys.argv, '--header-len', 100)
 
 
@@ -40,7 +41,8 @@ def set_params():
         data_mode = 'digits'
 
     # set output filename
-    outf = set_param_gen(sys.argv, '--out', None)
+    outf = set_param_gen(sys.argv, '--out', None,\
+        'valid filename must follow --out flag.')
 
     return inf, start, end, data_mode, outf, debug_raw, header_len
 
@@ -54,6 +56,12 @@ if __name__ == '__main__':
 
     # set params
     inf, start, end, data_mode, outf, debug_raw, header_len = set_params()
+
+    # not in help mode, because already quit, so must be regular or query mode
+    # make sure file is legit
+    if inf is None:
+        raise MyException('No filename given. Provide file with --in <filename>')
+
 
     # add the WAV EvenGenerator
     m = MixGenerator(inf, start, end, debug_raw, header_len)

@@ -10,16 +10,22 @@ from my_exception import MyException
 def set_param_int(args, target, default_value):
     if not target in args:
         return default_value
+    msg1 = 'The flag {} requires an integer argument. Try something like '.format(target)
+    msg2 = '{} <int>'.format(target)
+    msg = msg1 + msg2
     try:
         return int(args[args.index(target) + 1])
     except:
-        raise MyException('Failed to cast in in parameters. ' +
-            'This argument requires an int and you did not provide one ..')
+        raise MyException(msg)
 
-def set_param_gen(args, target, default_value):
+def set_param_gen(args, target, default_value, msg):
     if not target in args:
         return default_value
-    return args[args.index(target) + 1]
+    try:
+        return args[args.index(target) + 1]
+    except:
+        raise MyException(msg)
+
 
 # args is the args list
 # target is string to search for in args list

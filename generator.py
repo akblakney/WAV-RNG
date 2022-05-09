@@ -87,7 +87,10 @@ class MixGenerator(Generator):
         self.out_size = 64
 
         self.inf = inf
-        self.filesize = os.path.getsize(self.inf)
+        try:
+            self.filesize = os.path.getsize(self.inf)
+        except BaseException:
+            raise MyException('File could not be read. Check to see path and name are correct.')
         self.total_blocks = self.query()
         self.start = start
         self.end = end
@@ -102,9 +105,9 @@ class MixGenerator(Generator):
 
         # verify start/end input
         if self.start < 0 or self.start >= self.total_blocks:
-            raise MyException('invalid start')
+            raise MyException('invalid start. must be >= 0 and < available blocks')
         if self.end < 1 or self.end > self.total_blocks:
-            raise MyException('invalid end')
+            raise MyException('invalid end. must be > 0, and <= available blocks')
         if self.end <= self.start:
             raise MyException('start must be less than end')
 
