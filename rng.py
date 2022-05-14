@@ -8,7 +8,7 @@ import sys
 import os
 from params import set_param_int, set_param_gen, set_param_bool
 from my_exception import MyException
-from generator import BaseGenerator, SecretsGenerator, MixGenerator
+from generator import BaseGenerator, SecretsGenerator, ExtendGenerator
 
 # prints out the help statement
 def my_help():
@@ -27,6 +27,7 @@ def set_params():
     end = set_param_int(sys.argv, '-e', None)
     debug_raw = set_param_bool(sys.argv, '--debug-raw')
     header_len = set_param_int(sys.argv, '--header-len', 100)
+    extension_rounds = set_param_int(sys.argv, '--extend', None)
 
 
     # set data mode
@@ -44,7 +45,7 @@ def set_params():
     outf = set_param_gen(sys.argv, '--out', None,\
         'valid filename must follow --out flag.')
 
-    return inf, start, end, data_mode, outf, debug_raw, header_len
+    return inf, start, end, data_mode, outf, debug_raw, header_len, extension_rounds
 
 
 if __name__ == '__main__':
@@ -55,7 +56,8 @@ if __name__ == '__main__':
         exit()
 
     # set params
-    inf, start, end, data_mode, outf, debug_raw, header_len = set_params()
+    inf, start, end, data_mode, outf, debug_raw, header_len, \
+        extension_rounds = set_params()
 
     # not in help mode, because already quit, so must be regular or query mode
     # make sure file is legit
@@ -64,7 +66,7 @@ if __name__ == '__main__':
 
 
     # add the WAV EvenGenerator
-    m = MixGenerator(inf, start, end, debug_raw, header_len)
+    m = ExtendGenerator(inf, start, end, header_len, debug_raw,  extension_rounds)
 
     # query for how many bytes can be generated
     if '-q' in sys.argv:

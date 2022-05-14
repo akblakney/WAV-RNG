@@ -69,39 +69,41 @@ class SecretsGenerator(Generator):
     def generate(self):
         self.data = secrets.token_bytes(self.num_bytes)
 
-class MixGenerator(Generator):
-    # start and end give begin/ending 512 -> 64 bytes BLOCKS
-    # not bytes themselves
-    # e.g. start=0, end=2 will return 128 bytes,
-    # which correspond to the first block 0 -> 512, and second 512 -> 2*512
-    def __init__(self, inf, start, end, debug=False, header_len=100):
 
-        # hard code const
+class ExtendGenerator(Generator):
+
+    # mainly just set parameters for class and verify params
+    def __init__(self, inf, start, end, header_len=100, debug=False, extension_rounds=None):
+
+        # hard coded constants
+        self.block_size = 1024 # hard code
+        self.out_size = 64
+
+        # header
         self.header_len = header_len
-        # verify header
         if self.header_len < 100:
             raise MyException('Header length too short. Must be at least 100')
         if self.header_len % 2 != 0:
             raise MyException('Header length should be even..')
-        self.block_size = 512 # hard code
-        self.out_size = 64
 
+        # input file
         self.inf = inf
         try:
             self.filesize = os.path.getsize(self.inf)
         except BaseException:
             raise MyException('File could not be read. Check to see path and name are correct.')
+
+        if self.filesize < 1124:
+            raise MyException('File too small. Must be at least 1124 bytes')
+
+        # blocks, start, end pos.
         self.total_blocks = self.query()
         self.start = start
         self.end = end
-        self.debug_only_raw = debug
-
         if self.end is None:
             self.end = self.total_blocks
         if self.start is None:
             self.start = 0
-
-        self.num_blocks = self.end - self.start
 
         # verify start/end input
         if self.start < 0 or self.start >= self.total_blocks:
@@ -111,47 +113,81 @@ class MixGenerator(Generator):
         if self.end <= self.start:
             raise MyException('start must be less than end')
 
+        # settings
+        self.debug_only_raw = debug
+        self.extension_rounds = extension_rounds
+        if not self.extension_rounds is None and self.extension_rounds < 1:
+            raise MyException('number of extension rounds must be positive int > 0')
+
+        self.num_blocks = self.end - self.start
+
+
         self.data = None
 
-
     def generate(self):
+
         ret = bytearray()
         file = open(self.inf, 'rb')
 
         # skip 100 byte header and up til start
         _ = file.read(self.header_len + self.block_size * self.start)
 
+        # with extensions=None,
         # each iter converts self.block_size -> self.out_size bytes
-        # (for here this is 512 bytes -> 64 bytes)
+        # (for here this is 1024 bytes -> 64 bytes)
+        # 
+        # with extensions int > 1, each iter goes
+        # self.block_size -> self.out_size * extensions
+        # with subsequent blocks determined by sha(seed + i) for a counter i
         for i in range(self.num_blocks):
-            curr_bytes = file.read(self.block_size)
-            curr_bytes = self.bytes_from_block(curr_bytes)
-            assert(len(curr_bytes) == self.out_size)
-            ret.extend(curr_bytes)
-        assert(len(ret) == self.num_blocks * self.out_size)
+            wav_bytes = file.read(self.block_size)
+
+            # no extensions
+            if self.extension_rounds is None:
+                out_bytes = self.bytes_from_block(wav_bytes)
+                assert(len(out_bytes) == self.out_size)
+                ret.extend(out_bytes)
+                continue
+                
+            # if we are here then we have extensions
+            # each iter extends ret by self.out_size bytes
+
+            # curr_in are the inputs to the hash (self.block_size)
+            # courr_out are the outputs from the hash (self.out_size)
+            curr_in = wav_bytes
+            for j in range(self.extension_rounds):
+                curr_out = self.bytes_from_block(curr_in)
+                assert(len(curr_out) == self.out_size)
+                ret.extend(curr_out)
+                curr_in = self.extend(curr_in)  # essentially increments
+
+        if self.extension_rounds is None:
+            assert(len(ret) == self.num_blocks * self.out_size)
+        else:
+            assert(len(ret) == self.num_blocks * self.out_size * self.extension_rounds)
 
         self.data = ret
         file.close()
 
+    # increment value by one
+    def extend(self, b):
+        b = bytearray(b)
+        _int = int.from_bytes(b, byteorder='little')
+        return (_int + 1).to_bytes(len(b), 'little')
+        
+
     def bytes_from_block(self, b):
 
-        ret = bytearray()
-        s1 = bytearray([b[i] for i in range(0, self.block_size, 8)])
-        s2 = bytearray([b[i] for i in range(2, self.block_size, 8)])
-        s3 = bytearray([b[i] for i in range(4, self.block_size, 8)])
-        r = bytearray([b[i] for i in range(6, self.block_size, 8)])
+        # raw bytes to be XORed
+        r = bytearray([b[i] for i in range(0, self.block_size, 16)])
+        assert(len(r) == self.out_size)   # output for SHA-512
+        assert (len(b) == self.block_size)
 
         # for testing:
         if self.debug_only_raw:
             return r
 
-        s1.extend(s2)
-        s1.extend(s3)
-        assert(len(s1) == 192) # input for SHA-512
-        assert(len(r) == self.out_size)   # output for SHA-512:w:w
-
-        # hash s1
-        hash_out = sha512(s1).digest()
+        hash_out = sha512(b).digest()
         assert(len(hash_out) == len(r))
 
         # xor
@@ -159,10 +195,10 @@ class MixGenerator(Generator):
 
         return ret
 
-
     # gives the number of 384/64 byte blocks available
     def query(self):
         return (self.filesize - self.header_len) // self.block_size
+
 
 # generates random bytes by xor-ing the generated bytes from one or more
 # sub-generators in self.generators
@@ -203,9 +239,6 @@ class BaseGenerator(Generator):
             assert(len(curr) == len(ret))
             ret = bytes(a ^ b for (a, b) in zip(ret, curr))
         self.data = ret
-
-        
-            
 
     # writes or prints self.data in desired format
     def display(self, data_mode, outf):
