@@ -126,39 +126,43 @@ if __name__ == '__main__':
 
     inf = sys.argv[1]
     # hex counts
-    print('--- hex counts---')
-    counts = hex_counts(inf)
-    print(counts)
-    print()
+    #print('--- hex counts---')
+    #counts = hex_counts(inf)
+    #print(counts)
+    #print()
 
 
     # byte counts and min-entropy
     print('--- byte counts---')
     counts = byte_counts(inf)
-    plt.bar(range(len(counts)), list(counts.values()), align='center')
-    plt.title('Byte value distribution')
+    # normalize
+    _sum = sum(list(counts.values()))
+    vals = [v/_sum for v in list(counts.values())]
+    plt.bar(range(len(counts)), vals, align='center')
+    plt.title('Byte value distribution for {}'.format('even bytes post-SHA-512'))
     #plt.xticks(range(len(counts)), list(counts.keys()))
     p = max(counts.values()) / sum(counts.values())
     h_inf = -1 * math.log(p, 2)
     print('estimated min-entropy: {}'.format(h_inf))
 
     # digits
-    counts = digit_counts(inf)
-    fig,ax=plt.subplots()
-    ax.bar(range(len(counts)), list(counts.values()), align='center')
-    fig.suptitle('2-digit number distribution')
+    #counts = digit_counts(inf)
+    #fig,ax=plt.subplots()
+    #ax.bar(range(len(counts)), list(counts.values()), align='center')
+    #fig.suptitle('2-digit number distribution')
 
     # ascii
-    counts = ascii_counts(inf)
-    fig,ax=plt.subplots()
-    fig.suptitle('ascii distribution')
-    ax.bar(range(len(counts)), list(counts.values()), align='center')
+    #counts = ascii_counts(inf)
+    #fig,ax=plt.subplots()
+    #fig.suptitle('ascii distribution')
+    #ax.bar(range(len(counts)), list(counts.values()), align='center')
 
     # runs
-    print('--- runs ---')
-    runs, e_runs = runs(inf)
-    print('runs: {}\nexpected runs: {}'.format(runs, e_runs))
-    percent_diff = 100 * abs(runs - e_runs)/e_runs
-    print('percent difference: {}%'.format(round(percent_diff, 4)))
-    print()
+    #print('--- runs ---')
+    #runs, e_runs = runs(inf)
+    #print('runs: {}\nexpected runs: {}'.format(runs, e_runs))
+    #percent_diff = 100 * abs(runs - e_runs)/e_runs
+    #print('percent difference: {}%'.format(round(percent_diff, 4)))
+    #print()
+
     plt.show()

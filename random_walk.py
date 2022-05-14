@@ -27,10 +27,11 @@ def walk(file, N):
     return x
 
 file = open(sys.argv[1],'rb')
-N = 2e6
+N = 4e7
 walks = []
 title = 'Title'
-for i in range(1):
+num_walks = 1
+for i in range(num_walks):
     walks.append(walk(file, N))
 
 fig,ax=plt.subplots()
