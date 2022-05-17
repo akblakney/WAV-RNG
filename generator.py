@@ -73,11 +73,18 @@ class SecretsGenerator(Generator):
 class ExtendGenerator(Generator):
 
     # mainly just set parameters for class and verify params
-    def __init__(self, inf, start, end, header_len=100, debug=False, extension_rounds=None):
+    def __init__(self, inf, start, end, header_len=100, debug=False, extension_rounds=None, \
+        block_size=1024):
 
-        # hard coded constants
-        self.block_size = 1024 # hard code
+        # hard coded output of SHA-512
         self.out_size = 64
+
+        # set/verify blocksize
+        self.block_size = block_size
+        if self.block_size % self.out_size != 0:
+            raise MyException('block size must be multiple of {}'.format(self.out_size))
+        if self.block_size < self.out_size:
+            raise MyException('block size must be at least {}'.format(self.out_size))
 
         # header
         self.header_len = header_len
@@ -179,7 +186,8 @@ class ExtendGenerator(Generator):
     def bytes_from_block(self, b):
 
         # raw bytes to be XORed
-        r = bytearray([b[i] for i in range(0, self.block_size, 16)])
+        r = bytearray([b[i] for i in range(0, self.block_size, \
+            self.block_size // self.out_size)])
         assert(len(r) == self.out_size)   # output for SHA-512
         assert (len(b) == self.block_size)
 

@@ -28,6 +28,7 @@ def set_params():
     debug_raw = set_param_bool(sys.argv, '--debug-raw')
     header_len = set_param_int(sys.argv, '--header-len', 100)
     extension_rounds = set_param_int(sys.argv, '--extend', None)
+    block_size = set_param_int(sys.argv, '--block-size', 1024)
 
 
     # set data mode
@@ -45,7 +46,8 @@ def set_params():
     outf = set_param_gen(sys.argv, '--out', None,\
         'valid filename must follow --out flag.')
 
-    return inf, start, end, data_mode, outf, debug_raw, header_len, extension_rounds
+    return inf, start, end, data_mode, outf, debug_raw, header_len, \
+        extension_rounds, block_size
 
 
 if __name__ == '__main__':
@@ -57,7 +59,7 @@ if __name__ == '__main__':
 
     # set params
     inf, start, end, data_mode, outf, debug_raw, header_len, \
-        extension_rounds = set_params()
+        extension_rounds, block_size = set_params()
 
     # not in help mode, because already quit, so must be regular or query mode
     # make sure file is legit
@@ -66,13 +68,13 @@ if __name__ == '__main__':
 
 
     # add the WAV EvenGenerator
-    m = ExtendGenerator(inf, start, end, header_len, debug_raw,  extension_rounds)
+    m = ExtendGenerator(inf, start, end, header_len, debug_raw,  extension_rounds, block_size)
 
     # query for how many bytes can be generated
     if '-q' in sys.argv:
         available_blocks = m.query()
-        print('available 64-byte blocks for {}: {}'.format(
-            inf, available_blocks))
+        print('available 64-byte blocks for {} with block-size {}: {}'.format(
+            inf, block_size, available_blocks))
         exit()
 
     # create base generator and add additional ones
