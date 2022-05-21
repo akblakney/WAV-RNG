@@ -63,6 +63,13 @@ Using the `--debug-raw` flag causes only the even bytes of the .wav file, withou
 
 The header length of the .wav file can be optionally changed from the default value of 100 with the `--header-len <int>` flag. The value must be greater than 100 and be even, since the generator reads the even bytes only.
 
+### Block size
+
+The RNG is used with a default block-size of 1024 bytes. This means that .wav data is fed to SHA-512 1024 bytes at a time. This value was chosen with estimates of the entropy of the .wav data in mind, as in [this section](#measuring-entropy). But the value can be specified with the `--block-size` flag, with any multiple of 64 greater than 0. In particular, larger block sizes (e.g. 2048, 4096) may give more security. Example:
+
+`$python3 rng.py --in noise.wav --out random.bin --block-size 2048`
+
+
 Example: `$python3 --in noise.wav --hex --header-len 200`.
 
 ## Methodology and Technical Details
