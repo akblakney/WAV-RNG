@@ -27,7 +27,6 @@ class Generator(ABC):
     # calls self.generate
     def __init__(self):
         pass
-#        self.generate()
 
     # return the generated raw bytes
     def get_bytes(self):
@@ -136,7 +135,7 @@ class ExtendGenerator(Generator):
         ret = bytearray()
         file = open(self.inf, 'rb')
 
-        # skip 100 byte header and up til start
+        # skip header and up til start
         _ = file.read(self.header_len + self.block_size * self.start)
 
         # with extensions=None,
@@ -203,7 +202,7 @@ class ExtendGenerator(Generator):
 
         return ret
 
-    # gives the number of 384/64 byte blocks available
+    # gives the number of 64-byte blocks available to be generated
     def query(self):
         return (self.filesize - self.header_len) // self.block_size
 

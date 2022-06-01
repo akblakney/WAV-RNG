@@ -12,6 +12,24 @@ import math
 import matplotlib.pyplot as plt
 from hashlib import sha256
 from scipy.stats import chisquare
+from my_exception import MyException
+# num_blocks gives number of blocks to look through
+def start_collisions(inf, collision_size, header_len, block_size, num_blocks):
+    if collision_size > block_size:
+        raise MyException('collision size must be smaller than block size')
+    f = open(inf, 'rb')
+    _ = f.read(header_len)
+    b = f.read(block_size)
+
+    i = 0
+    l = []
+    while i < num_blocks and b:
+        l.append(b[:collision_size])
+
+        b = f.read(block_size)
+        i += 1
+
+    return len(l) - len(set(l))
 
 # return an estimate of the min-entropy, in bits/byte given a distribution
 # of bytes in dictionary form

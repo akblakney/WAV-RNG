@@ -67,7 +67,7 @@ if __name__ == '__main__':
         raise MyException('No filename given. Provide file with --in <filename>')
 
 
-    # add the WAV EvenGenerator
+    # add the WAV ExtendGenerator
     m = ExtendGenerator(inf, start, end, header_len, debug_raw,  extension_rounds, block_size)
 
     # query for how many bytes can be generated
