@@ -53,7 +53,7 @@ def set_params():
 if __name__ == '__main__':
 
     # help
-    if '-h' in sys.argv:
+    if '-h' in sys.argv or '--help' in sys.argv:
         my_help()
         exit()
 
@@ -62,17 +62,17 @@ if __name__ == '__main__':
         extension_rounds, block_size = set_params()
 
     # not in help mode, because already quit, so must be regular or query mode
-    # make sure file is legit
+    # make sure filename is given
     if inf is None:
         raise MyException('No filename given. Provide file with --in <filename>')
 
 
     # add the WAV ExtendGenerator
-    m = ExtendGenerator(inf, start, end, header_len, debug_raw,  extension_rounds, block_size)
+    e = ExtendGenerator(inf, start, end, header_len, debug_raw, extension_rounds, block_size)
 
     # query for how many bytes can be generated
     if '-q' in sys.argv:
-        available_blocks = m.query()
+        available_blocks = e.query()
         print('available 64-byte blocks for {} with block-size {}: {}'.format(
             inf, block_size, available_blocks))
         exit()
@@ -80,8 +80,8 @@ if __name__ == '__main__':
     # create base generator and add additional ones
     base = BaseGenerator()
 
-    num_bytes = m.num_blocks * 64 # number of bytes per block
-    base.add_generator(m)
+    num_bytes = e.num_blocks * 64 # number of bytes per block
+    base.add_generator(e)
 
     if '--secrets' in sys.argv:
         base.add_generator(SecretsGenerator(num_bytes))

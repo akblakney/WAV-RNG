@@ -99,8 +99,10 @@ class ExtendGenerator(Generator):
         except BaseException:
             raise MyException('File could not be read. Check to see path and name are correct.')
 
-        if self.filesize < 1124:
-            raise MyException('File too small. Must be at least 1124 bytes')
+        min_size = self.block_size + self.header_len
+        err_msg = 'File too small. Must be at least {} bytes'.format(min_size)
+        if self.filesize < min_size:
+            raise MyException(err_msg)
 
         # blocks, start, end pos.
         self.total_blocks = self.query()
@@ -182,6 +184,8 @@ class ExtendGenerator(Generator):
         return (_int + 1).to_bytes(len(b), 'little')
         
 
+    # b is bytearray of length self.block_size
+    # returns extracted random bytes of size self.out_size
     def bytes_from_block(self, b):
 
         # raw bytes to be XORed
