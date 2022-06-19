@@ -82,6 +82,9 @@ class ExtendGenerator(Generator):
         self.block_size = block_size
         if self.block_size % self.out_size != 0:
             raise MyException('block size must be multiple of {}'.format(self.out_size))
+        # add this because of new raw method
+        if (self.block_size // 2) % self.out_size != 0:
+            raise MyException('block size/2 must be multiple of {}'.format(self.out_size))
         if self.block_size < self.out_size:
             raise MyException('block size must be at least {}'.format(self.out_size))
 
@@ -189,8 +192,34 @@ class ExtendGenerator(Generator):
     def bytes_from_block(self, b):
 
         # raw bytes to be XORed
-        r = bytearray([b[i] for i in range(0, self.block_size, \
-            self.block_size // self.out_size)])
+#        r = bytearray([b[i] for i in range(0, self.block_size, \
+#            self.block_size // self.out_size)])
+
+        # try the new way
+        even_bytes = bytearray([b[i] for i in range(0, self.block_size, \
+            2)])
+        odd_bytes = bytearray([b[i] for i in range(1, self.block_size, \
+            2)])
+
+        assert(len(even_bytes) == len(odd_bytes))
+        assert(len(even_bytes) == len(b) // 2)
+
+        # smush even_bytes and odd-bytes each down to out_size each
+        compress_ratio = len(even_bytes) // self.out_size
+        even_out = bytes(self.out_size)
+        odd_out = bytes(self.out_size)
+        for i in range(0, compress_ratio):
+            even_out = bytes(a ^ b for (a, b) in zip(even_out,
+                even_bytes[self.out_size * i: self.out_size * (i+1)]))
+            odd_out = bytes(a ^ b for (a, b) in zip(odd_out,
+                odd_bytes[self.out_size * i: self.out_size * (i+1)]))
+            
+        assert(len(even_out) == self.out_size)
+        assert(len(odd_out) == len(even_out))
+
+        # xor even and odd outs
+        r = bytes(a^b for (a, b) in zip(even_out, odd_out))
+        
         assert(len(r) == self.out_size)   # output for SHA-512
         assert (len(b) == self.block_size)
 
