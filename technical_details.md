@@ -150,26 +150,26 @@ Now, we operate on one 1024-byte block at a time as follows (description in pseu
 function random_bytes_from_block(block):
 
   # split the 1024 bytes into even and odd bytes
-  even_bytes &#8592; values with even indices of block  # length 512
-  odd_bytes &#8592; values with odd indices of block  # length 512
+  even_bytes ← values with even indices of block  # length 512
+  odd_bytes ← values with odd indices of block  # length 512
   
   # compress even_bytes and odd_bytes down to arrays of size 64, using XOR
-  even_out &#8592; [0, ..., 0]   # length 64
-  odd_oub &#8592; [0, ..., 0]   # length 64
+  even_out ← [0, ..., 0]   # length 64
+  odd_oub ← [0, ..., 0]   # length 64
   
   for i in [0, ..., 7]:
-    even_out &#8592; xor(even_out, even_bytes[i*64 , ..., (i+1)*64)
-    odd_out &#8592; xor(odd_out, odd_bytes[i*64 , ..., (i+1)*64)
+    even_out ← xor(even_out, even_bytes[i*64 , ..., (i+1)*64)
+    odd_out ← xor(odd_out, odd_bytes[i*64 , ..., (i+1)*64)
 
   # now even_out and odd_out are length 64 each
   # xor them together to get product
-  pre_sha_output = xor(even_out, odd_out)
+  pre_sha_output ← xor(even_out, odd_out)
   
   # take SHA-512 hash of entire block
-  hash_out = sha512(block)
+  hash_out ← sha512(block)
   
   # output the pre_sha_output with the hash_out
-  return xor(pre_sha_output, hash_out
+  return xor(pre_sha_output, hash_out)
 
 ```
 
