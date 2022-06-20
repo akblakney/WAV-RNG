@@ -8,7 +8,7 @@ The methodology for this RNG is inspired by Jeremy Triplett in his [medium post]
 The basic idea behind the RNG is this: the waveform of [atmospheric noise](https://en.wikipedia.org/wiki/Atmospheric_noise), which is after all radio noise caused by natural atmospheric processes, should be random. The way that this waveform is captured in a .wav file is by a series of 16-bit samples. Basically, the data of a .wav file is a series of 16-bit numbers that describe the wave at different points in time, and these numbers should have some randomness in them. But first we must clarify what we mean when we say the waveform has some "randomness" in it, and how it can help us generate random numbers.
 
 ![h](figures/raw_signal.png)
-*The top is the plot of the raw integer-values of the signal, zoomed in to capture at a resolution of less than a tenth of a second. The bottom is a histogram of the raw integer-values of the signal.
+*The top is the plot of the raw integer-values of the signal, zoomed in to capture at a resolution of less than a tenth of a second. The bottom is a histogram of the raw integer-values of the signal.*
 
 
 ### Extracting Randomness from Entropy
