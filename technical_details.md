@@ -155,11 +155,11 @@ function random_bytes_from_block(block):
   
   # compress even_bytes and odd_bytes down to arrays of size 64, using XOR
   even_out ← [0, ..., 0]   # length 64
-  odd_oub ← [0, ..., 0]   # length 64
+  odd_out ← [0, ..., 0]   # length 64
   
   for i in [0, ..., 7]:
-    even_out ← xor(even_out, even_bytes[i*64 , ..., (i+1)*64)
-    odd_out ← xor(odd_out, odd_bytes[i*64 , ..., (i+1)*64)
+    even_out ← xor(even_out, even_bytes[i*64 , ..., (i+1)*64])  # XOR even bytes with other even bytes
+    odd_out ← xor(odd_out, odd_bytes[i*64 , ..., (i+1)*64])   # XOR odd bytes with other odd bytes
 
   # now even_out and odd_out are length 64 each
   # xor them together to get product
@@ -173,7 +173,7 @@ function random_bytes_from_block(block):
 
 ```
 
-The above pseudocode may look confusing, but there the procedure is rather simple. We squish down each 1024-byte block to a single 64-byte block by XOR-ing the bytes from the block with different bytes from the block. Because we XOR eight times for both the even and odd bytes, the output of this, `pre_sha_output` is already quite random (it passes dieharder). To be safe, we xor this with the 64-byte hash digest of the entire block.
+The above pseudocode may look confusing, but there the procedure is rather simple. We squish down each 1024-byte block to a single 64-byte block by XOR-ing the bytes from the block with different bytes from the block. Because we XOR eight times for both the even and odd bytes, the output of this, `pre_sha_output` is already quite random (it passes dieharder). To be safe, we xor this with the 64-byte hash digest of the entire block. The length of each block can easily be modified to any multiple of 128, which users can do with the `--block-size <int>` flag.
 
 And that's it! Overall we are hashing chunks of the .wav data with SHA-512, and then XOR-ing the output of that hash with already-XORed bytes in the .wav file.  Throughout this project I've entertained many different contstructions of the RNG, each with their pros and cons. At the end I was torn between outputting raw bytes from the .wav file (and lowering the sample rate to ensure a high entropy, if needed), and having the output be entirely composed of hashes of the raw .wav bytes. Neither of these felt sufficient to me. In the first case, there is a worry that the raw bytes have a distribution that is ever so slightly different than the target uniform random. And in the second case, I didn't like the idea of the output being entirely composed of hash outputs; I wanted to retain some of the raw entropy unfiltered through a deterministic hash function. The result is, in my opinion, the best of both worlds: hashing blocks of the .wav data and combining that hash with some of the raw data.
 
