@@ -72,8 +72,8 @@ class SecretsGenerator(Generator):
 class ExtendGenerator(Generator):
 
     # mainly just set parameters for class and verify params
-    def __init__(self, inf, start, end, header_len=100, debug=False, extension_rounds=None, \
-        block_size=1024):
+    def __init__(self, inf, start, end, header_len=100, no_sha=False, \
+        extension_rounds=None, block_size=2048):
 
         # hard coded output of SHA-512
         self.out_size = 64
@@ -81,12 +81,15 @@ class ExtendGenerator(Generator):
         # set/verify blocksize
         self.block_size = block_size
         if self.block_size % self.out_size != 0:
-            raise MyException('block size must be multiple of {}'.format(self.out_size))
+            raise MyException(
+                'block size must be multiple of {}'.format(self.out_size))
         # add this because of new raw method
         if (self.block_size // 2) % self.out_size != 0:
-            raise MyException('block size/2 must be multiple of {}'.format(self.out_size))
+            raise MyException(
+                'block size/2 must be multiple of {}'.format(self.out_size))
         if self.block_size < self.out_size:
-            raise MyException('block size must be at least {}'.format(self.out_size))
+            raise MyException(
+                'block size must be at least {}'.format(self.out_size))
 
         # header
         self.header_len = header_len
@@ -100,7 +103,8 @@ class ExtendGenerator(Generator):
         try:
             self.filesize = os.path.getsize(self.inf)
         except BaseException:
-            raise MyException('File could not be read. Check to see path and name are correct.')
+            raise MyException(
+                'File could not be read. Check to see path and name are correct.')
 
         min_size = self.block_size + self.header_len
         err_msg = 'File too small. Must be at least {} bytes'.format(min_size)
@@ -125,7 +129,7 @@ class ExtendGenerator(Generator):
             raise MyException('start must be less than end')
 
         # settings
-        self.debug_only_raw = debug
+        self.no_sha = no_sha
         self.extension_rounds = extension_rounds
         if not self.extension_rounds is None and self.extension_rounds < 1:
             raise MyException('number of extension rounds must be positive int > 0')
@@ -185,30 +189,30 @@ class ExtendGenerator(Generator):
         b = bytearray(b)
         _int = int.from_bytes(b, byteorder='little')
         return (_int + 1).to_bytes(len(b), 'little')
-        
 
-    # b is bytearray of length self.block_size
-    # returns extracted random bytes of size self.out_size
-    def bytes_from_block(self, b):
 
-        # raw bytes to be XORed
-#        r = bytearray([b[i] for i in range(0, self.block_size, \
-#            self.block_size // self.out_size)])
+    def process_raw(self, raw_in):
 
-        # try the new way
-        even_bytes = bytearray([b[i] for i in range(0, self.block_size, \
+        raw_size = len(raw_in)
+        assert(raw_size == self.block_size // 2)
+
+        # extract even and odd bytes from the block
+        even_bytes = bytearray([raw_in[i] for i in range(0, raw_size, \
             2)])
-        odd_bytes = bytearray([b[i] for i in range(1, self.block_size, \
+        odd_bytes = bytearray([raw_in[i] for i in range(1, raw_size, \
             2)])
 
         assert(len(even_bytes) == len(odd_bytes))
-        assert(len(even_bytes) == len(b) // 2)
+        assert(len(even_bytes) == raw_size // 2)
+
+        assert(len(even_bytes) % self.out_size == 0)
 
         # smush even_bytes and odd-bytes each down to out_size each
-        compress_ratio = len(even_bytes) // self.out_size
+        num_folds = (len(even_bytes) // self.out_size)
         even_out = bytes(self.out_size)
         odd_out = bytes(self.out_size)
-        for i in range(0, compress_ratio):
+
+        for i in range(num_folds):
             even_out = bytes(a ^ b for (a, b) in zip(even_out,
                 even_bytes[self.out_size * i: self.out_size * (i+1)]))
             odd_out = bytes(a ^ b for (a, b) in zip(odd_out,
@@ -218,20 +222,40 @@ class ExtendGenerator(Generator):
         assert(len(odd_out) == len(even_out))
 
         # xor even and odd outs
-        r = bytes(a^b for (a, b) in zip(even_out, odd_out))
+        raw_out = bytes(a^b for (a, b) in zip(even_out, odd_out))
         
-        assert(len(r) == self.out_size)   # output for SHA-512
-        assert (len(b) == self.block_size)
+        assert(len(raw_out) == self.out_size)   # output for SHA-512
 
-        # for testing:
-        if self.debug_only_raw:
-            return r
+        return raw_out
+        
+    def process_hash(self, hash_in):
+        hash_out = sha512(hash_in).digest()
+        return hash_out
 
-        hash_out = sha512(b).digest()
-        assert(len(hash_out) == len(r))
+
+    # b is bytearray of length self.block_size
+    # returns extracted random bytes of size self.out_size
+    def bytes_from_block(self, b):
+
+        assert(len(b) == self.block_size)
+
+        # split into raw and hash portions
+        hash_in = b[:self.block_size // 2]
+        raw_in = b[self.block_size // 2 :]
+
+        # do raw portion
+        raw_out = self.process_raw(raw_in)
+        assert(len(raw_out) == self.out_size)
+
+        if self.no_sha:
+            return raw_out
+
+        # hash portion
+        hash_out = self.process_hash(hash_in)
+        assert(len(hash_out) == self.out_size)
 
         # xor
-        ret = bytes(a ^ b for (a,b) in zip(hash_out, r))
+        ret = bytes(a ^ b for (a,b) in zip(raw_out, hash_out))
 
         return ret
 

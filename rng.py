@@ -25,10 +25,10 @@ def set_params():
 
     start = set_param_int(sys.argv, '-s', 0)
     end = set_param_int(sys.argv, '-e', None)
-    debug_raw = set_param_bool(sys.argv, '--debug-raw')
+    no_sha = set_param_bool(sys.argv, '--no-sha')
     header_len = set_param_int(sys.argv, '--header-len', 100)
     extension_rounds = set_param_int(sys.argv, '--extend', None)
-    block_size = set_param_int(sys.argv, '--block-size', 1024)
+    block_size = set_param_int(sys.argv, '--block-size', 2048)
 
 
     # set data mode
@@ -46,7 +46,7 @@ def set_params():
     outf = set_param_gen(sys.argv, '--out', None,\
         'valid filename must follow --out flag.')
 
-    return inf, start, end, data_mode, outf, debug_raw, header_len, \
+    return inf, start, end, data_mode, outf, no_sha, header_len, \
         extension_rounds, block_size
 
 
@@ -58,7 +58,7 @@ if __name__ == '__main__':
         exit()
 
     # set params
-    inf, start, end, data_mode, outf, debug_raw, header_len, \
+    inf, start, end, data_mode, outf, no_sha, header_len, \
         extension_rounds, block_size = set_params()
 
     # not in help mode, because already quit, so must be regular or query mode
@@ -68,7 +68,7 @@ if __name__ == '__main__':
 
 
     # add the WAV ExtendGenerator
-    e = ExtendGenerator(inf, start, end, header_len, debug_raw, extension_rounds, block_size)
+    e = ExtendGenerator(inf, start, end, header_len, no_sha, extension_rounds, block_size)
 
     # query for how many bytes can be generated
     if '-q' in sys.argv:
