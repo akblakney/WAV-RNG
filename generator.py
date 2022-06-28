@@ -197,10 +197,8 @@ class ExtendGenerator(Generator):
         assert(raw_size == self.block_size // 2)
 
         # extract even and odd bytes from the block
-        even_bytes = bytearray([raw_in[i] for i in range(0, raw_size, \
-            2)])
-        odd_bytes = bytearray([raw_in[i] for i in range(1, raw_size, \
-            2)])
+        even_bytes = bytearray([raw_in[i] for i in range(0, raw_size, 2)])
+        odd_bytes =  bytearray([raw_in[i] for i in range(1, raw_size, 2)])
 
         assert(len(even_bytes) == len(odd_bytes))
         assert(len(even_bytes) == raw_size // 2)
