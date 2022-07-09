@@ -141,17 +141,22 @@ As I mentioned, as long as two strings of bits are statistically independent—a
 I've rambled on long enough about even and odd bytes, entropy, i.i.d. randomness, and so on. Now that I've explained all the components, I'll detail the specific construction of the RNG which outputs random bytes from the .wav data. The steps are as follows:
 
 1. Discard the 44-byte .wav file header (in reality at least 100 bytes are discarded, to be safe).
-2. Split the remaining bytes into 1024-byte blocks. (The block-size can be adjusted with the `--block-size` flag to be a different multiple of 64. But the default value of 1024-bytes has proven to be sufficient through entropy measurement).
+2. Split the remaining bytes into 1024-byte blocks. (The block-size can be adjusted with the `--block-size` flag to be a different multiple of 64. But the default value of 2048-bytes has proven to be sufficient through entropy measurement).
 
-Now, we operate on one 1024-byte block at a time as follows (description in pseudocode for clarity):
+Now, we operate on one 2048-byte block at a time as follows (description in pseudocode for clarity):
 ```
-# block is 1024-byte block
+# block is 2048-byte block
 # returns 64-byte random output
 function random_bytes_from_block(block):
 
-  # split the 1024 bytes into even and odd bytes
-  even_bytes ← values with even indices of block  # length 512
-  odd_bytes ← values with odd indices of block  # length 512
+  # split the 2048-bytes into two blocks of equal size
+  # one is to be used for the raw XOR compression portion, the other for the hash portion
+  raw_in ← block[0, ..., 1023]
+  hash_in ← block[1024, ..., 2047]
+  
+  # do the raw XOR compression portion
+  even_bytes ← values with even indices of raw_in  # length 512
+  odd_bytes ← values with odd indices of raw_in  # length 512
   
   # compress even_bytes and odd_bytes down to arrays of size 64, using XOR
   even_out ← [0, ..., 0]   # length 64
@@ -163,19 +168,19 @@ function random_bytes_from_block(block):
 
   # now even_out and odd_out are length 64 each
   # xor them together to get product
-  pre_sha_output ← xor(even_out, odd_out)
+  raw_xor_out ← xor(even_out, odd_out)
   
-  # take SHA-512 hash of entire block
-  hash_out ← sha512(block)
+  # take SHA-512 hash of the hash half of the block
+  hash_out ← sha512(hash_in)
   
   # output the pre_sha_output with the hash_out
-  return xor(pre_sha_output, hash_out)
+  return xor(raw_xor_out, hash_out)
 
 ```
 
-The above pseudocode may look confusing, but there the procedure is rather simple. We squish down each 1024-byte block to a single 64-byte block by XOR-ing the bytes from the block with different bytes from the block. Because we XOR eight times for both the even and odd bytes, the output of this, `pre_sha_output` is already quite random (it passes dieharder). To be safe, we xor this with the 64-byte hash digest of the entire block. The length of each block can easily be modified to any multiple of 128, which users can do with the `--block-size <int>` flag.
+The above pseudocode may look confusing, but there the procedure is rather simple. We squish split each 2048-byte block into two 1024-byte blocks. The first of these, we compress down to 64 bytes by repeatedly XOR-ing the bytes in that block together. Because we XOR eight times for both the even and odd bytes, the output of this, `raw_xor_out` is already quite random (it passes dieharder). To be safe, we xor this with the 64-byte hash digest of the second 1024-byte block. The length of each block can easily be modified to any multiple of 128, which users can do with the `--block-size <int>` flag.
 
-And that's it! Overall we are hashing chunks of the .wav data with SHA-512, and then XOR-ing the output of that hash with already-XORed bytes in the .wav file.  Throughout this project I've entertained many different contstructions of the RNG, each with their pros and cons. At the end I was torn between outputting raw bytes from the .wav file (and lowering the sample rate to ensure a high entropy, if needed), and having the output be entirely composed of hashes of the raw .wav bytes. Neither of these felt sufficient to me. In the first case, there is a worry that the raw bytes have a distribution that is ever so slightly different than the target uniform random. And in the second case, I didn't like the idea of the output being entirely composed of hash outputs; I wanted to retain some of the raw entropy unfiltered through a deterministic hash function. The result is, in my opinion, the best of both worlds: hashing blocks of the .wav data and combining that hash with some of the raw data.
+And that's it! Overall we are compressing the .wav data with XOR, and then combining this result with SHA-512 hash digests of .wav data. Throughout this project I've entertained many different contstructions of the RNG, each with their pros and cons. At the end I was torn between outputting raw bytes from the .wav file (and lowering the sample rate to ensure a high entropy, if needed), and having the output be entirely composed of hashes of the raw .wav bytes. Neither of these felt sufficient to me. In the first case, there is a worry that the raw bytes have a distribution that is ever so slightly different than the target uniform random. And in the second case, I didn't like the idea of the output being entirely composed of hash outputs; I wanted to retain some of the raw entropy unfiltered through a deterministic hash function. The result is, in my opinion, the best of both worlds: hashing blocks of the .wav data and combining that hash with some of the raw data.
 
 We also get some nice assurances with this method. Recall that the XOR function has the nice property that it retains randomness: if we take a random string and XOR it with any other string, the result will be random. (Another way of saying this is that the resulting string will have just as much entropy as the original one.) The catch is that the two strings must be (statistically) independent. And here the 64 even bytes are independent from the hash of the 1024-byte block due to the fact that we are treating SHA-512 as a [random oracle](https://en.wikipedia.org/wiki/Random_oracle). (It's not really a random oracle, but for fixed lengths, it is [computationally indistinguishable](https://crypto.stackexchange.com/questions/81455/using-sha2-as-random-number-generator) from one).
 
