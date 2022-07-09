@@ -141,7 +141,7 @@ As I mentioned, as long as two strings of bits are statistically independent—a
 I've rambled on long enough about even and odd bytes, entropy, i.i.d. randomness, and so on. Now that I've explained all the components, I'll detail the specific construction of the RNG which outputs random bytes from the .wav data. The steps are as follows:
 
 1. Discard the 44-byte .wav file header (in reality at least 100 bytes are discarded, to be safe).
-2. Split the remaining bytes into 1024-byte blocks. (The block-size can be adjusted with the `--block-size` flag to be a different multiple of 64. But the default value of 2048-bytes has proven to be sufficient through entropy measurement).
+2. Split the remaining bytes into 2048-byte blocks. (The block-size can be adjusted with the `--block-size` flag to be a different multiple of 128. But the default value of 2048-bytes has proven to be sufficient through entropy measurement).
 
 Now, we operate on one 2048-byte block at a time as follows (description in pseudocode for clarity):
 ```
@@ -155,10 +155,12 @@ function random_bytes_from_block(block):
   hash_in ← block[1024, ..., 2047]
   
   # do the raw XOR compression portion
-  even_bytes ← values with even indices of raw_in  # length 512
-  odd_bytes ← values with odd indices of raw_in  # length 512
+  even_bytes ← raw_in[0, 2, 4, ...]  # length 512
+  odd_bytes ← raw_in[1, 3, 5, ...]  # length 512
   
   # compress even_bytes and odd_bytes down to arrays of size 64, using XOR
+  
+  # initialize zero-arrays
   even_out ← [0, ..., 0]   # length 64
   odd_out ← [0, ..., 0]   # length 64
   
@@ -170,10 +172,11 @@ function random_bytes_from_block(block):
   # xor them together to get product
   raw_xor_out ← xor(even_out, odd_out)
   
+  # now do hash portion
   # take SHA-512 hash of the hash half of the block
   hash_out ← sha512(hash_in)
   
-  # output the pre_sha_output with the hash_out
+  # output the combined raw_xor and hash outputs
   return xor(raw_xor_out, hash_out)
 
 ```
