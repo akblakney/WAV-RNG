@@ -8,7 +8,34 @@ import sys
 import os
 from params import set_param_int, set_param_gen, set_param_bool
 from my_exception import MyException
-from generator import BaseGenerator, SecretsGenerator, ExtendGenerator
+from generator import query_blocks, generate_from_wav
+import secrets
+from x_from_bytes import digits_from_bytes, ascii_from_bytes, binary_from_bytes,\
+    hex_from_bytes
+
+ # writes or prints self.data in desired format
+def display(wav_bytes, data_mode, outf):
+
+    # get data to write
+    write_mode = 'w'
+    if data_mode is None:
+        ret = wav_bytes
+        write_mode = 'wb'
+    elif data_mode == 'ascii':
+        ret = ascii_from_bytes(wav_bytes)
+    elif data_mode == 'binary':
+        ret = binary_from_bytes(wav_bytes)
+    elif data_mode == 'hex':
+        ret = hex_from_bytes(wav_bytes)
+    elif data_mode == 'digits':
+        ret = digits_from_bytes(wav_bytes)
+
+    # write or print
+    if outf is None:
+        print(ret)
+    else:
+        with open(outf, write_mode) as f:
+            f.write(ret)        
 
 # prints out the help statement
 def my_help():
@@ -27,7 +54,6 @@ def set_params():
     end = set_param_int(sys.argv, '-e', None)
     no_sha = set_param_bool(sys.argv, '--no-sha')
     header_len = set_param_int(sys.argv, '--header-len', 100)
-    extension_rounds = set_param_int(sys.argv, '--extend', None)
     block_size = set_param_int(sys.argv, '--block-size', 2048)
 
 
@@ -47,7 +73,7 @@ def set_params():
         'valid filename must follow --out flag.')
 
     return inf, start, end, data_mode, outf, no_sha, header_len, \
-        extension_rounds, block_size
+        block_size
 
 
 if __name__ == '__main__':
@@ -59,37 +85,32 @@ if __name__ == '__main__':
 
     # set params
     inf, start, end, data_mode, outf, no_sha, header_len, \
-        extension_rounds, block_size = set_params()
+        block_size = set_params()
 
     # not in help mode, because already quit, so must be regular or query mode
     # make sure filename is given
     if inf is None:
         raise MyException('No filename given. Provide file with --in <filename>')
 
-
-    # add the WAV ExtendGenerator
-    e = ExtendGenerator(inf, start, end, header_len, no_sha, extension_rounds, block_size)
-
     # query for how many bytes can be generated
     if '-q' in sys.argv:
-        available_blocks = e.query()
+        filesize = os.path.getsize(inf)
+        available_blocks = query_blocks(filesize, block_size, header_len)
         print('available 64-byte blocks for {} with block-size {}: {}'.format(
             inf, block_size, available_blocks))
         exit()
 
-    # create base generator and add additional ones
-    base = BaseGenerator()
+    # now we are reading wav file
+    ret = generate_from_wav(inf, block_size, start, end, header_len, no_sha)
 
-    num_bytes = e.num_blocks * 64 # number of bytes per block
-    base.add_generator(e)
+    num_bytes = len(ret)
 
     if '--secrets' in sys.argv:
-        base.add_generator(SecretsGenerator(num_bytes))
+        s = secrets.token_bytes(num_bytes)
+        ret = bytes(a^b for (a,b) in zip(ret, s))
 
-    # generate
-    base.generate()
-
+    
     # print or write to file
-    base.display(data_mode, outf)
+    display(ret, data_mode, outf)
 
 
