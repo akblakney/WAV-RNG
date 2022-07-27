@@ -11,8 +11,8 @@ secrets module (A CSPRNG)
 '''
 
 from hashlib import sha512
-from x_from_bytes import digits_from_bytes, ascii_from_bytes, binary_from_bytes,\
-    hex_from_bytes
+#from x_from_bytes import digits_from_bytes, ascii_from_bytes, binary_from_bytes,\
+#    hex_from_bytes
 from my_exception import MyException
 import os
 
@@ -56,7 +56,7 @@ def bytes_from_block(wav_bytes, out_size=64, no_sha=False):
     assert(n % (2 * out_size) == 0)
 
     # split into hash and raw portions
-    hash_in = wav_bytes[:n // 2]
+    hash_in = wav_bytes[: n // 2]
     raw_in = wav_bytes[n // 2 :]
 
     # raw portion
@@ -119,12 +119,12 @@ def generate_from_wav(inf, block_size=2048, start=0, end=None, header_len=100,
     # main loop
     for _ in range(num_blocks):
         wav_bytes = f.read(block_size)
+        assert(len(wav_bytes) == block_size)
         out_bytes = bytes_from_block(wav_bytes, out_size=out_size, no_sha=no_sha)
         assert(len(out_bytes) == out_size)
         ret.extend(out_bytes)
 
+    f.close()
     return ret
-
-
 
 
