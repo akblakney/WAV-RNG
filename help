@@ -44,6 +44,11 @@ Method 3 (generate from .wav): with python3 rng.py --in <filename> [-s start]
     100. Recommended to select integer at least 100 and it should be even, or else
     the odd bytes will be used which is bad..
 
+  --extend <int> is used to seed a PRNG (based on SHA-512) with the entropy from the
+    atmospheric noise. The specified integer gives the number of 64-byte blocks to
+    output from one chunk of entropy from the .wav file (specified with --block-size,
+    with default value of 1024 bytes). 
+
 Examples uses:
 
   python3 rng.py --in noise.wav -s 0 -e 5 --hex

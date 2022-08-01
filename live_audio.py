@@ -9,7 +9,7 @@ from generator import bytes_from_block
 p = pyaudio .PyAudio()
 MIN_READ = 2048
 #BLOCK_SIZE = 4096 # note: BLOCK_SIZE in bytes, but audio stream in 16-bit ints.
-BLOCK_SIZE = 8192
+BLOCK_SIZE = 8192 * 4
 chunk = 1024
 sample_format = pyaudio.paInt16
 channels = 1
@@ -41,32 +41,24 @@ i = 0
 #while stream.is_active():
 buffer = bytearray()
 while i < N:
-#  available = stream.get_read_available()
-#  if available < MIN_READ:
-#    time.sleep(0.2)
-#    continue
-#  x = stream.read(available)
-#  x = bytes_from_block(x[:4096], no_sha=False)
-#  x = ascii_from_bytes(x)
-#  print('block {}: sha256({} frames) -> {}'.format(i, available, x[:16]))
-#  i += 1
 
   # read in available bytes
   available = stream.get_read_available()
   if available == 0:
     time.sleep(.2)
     continue
-  print('available: {}'.format(available))
+
+  #print('available: {}'.format(available))
   buffer.extend(stream.read(available))
-  print('in buffer: {}'.format(len(buffer)))
+  #print('in buffer: {}'.format(len(buffer)))
 
   # if enough to feed a block to RNG, do so
   if len(buffer) > BLOCK_SIZE:
     curr_wav_bytes = buffer[:BLOCK_SIZE]
     buffer = buffer[BLOCK_SIZE:]
 
-    rand_bytes = bytes_from_block(curr_wav_bytes, no_sha=True)
-    print('{}: {}'.format(i, ascii_from_bytes(rand_bytes[:50])))
+    rand_bytes = bytes_from_block(curr_wav_bytes, no_sha=False)
+    print('{}: {}'.format(i, ascii_from_bytes(rand_bytes)[:20]))
     i += 1
 
 stream.stop_stream()

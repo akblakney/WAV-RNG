@@ -14,7 +14,7 @@ import math
 import matplotlib.pyplot as plt
 import sys
 from x_from_bytes import hex_from_byte, binary_from_byte, digit_from_byte,\
-    ascii_from_bytes
+    ascii_from_bytes, randint
 
 def init_hex_dict():
     ret = dict()
@@ -27,13 +27,12 @@ def init_hex_dict():
 def byte_counts(inf):
     file = open(inf, 'rb')
     counts = {}
+    for i in range(256):
+        counts[i] = 0
     byte = file.read(1)
     while byte:
         b = ord(byte)
-        if b in counts:
-            counts[b] += 1
-        else:
-            counts[b] = 1
+        counts[b] += 1
         byte = file.read(1)
     file.close()
     return counts
@@ -53,6 +52,24 @@ def hex_counts(inf):
         counts[curr_hex[1]] += 1
 
         byte = file.read(1)
+
+    file.close()
+    return counts
+
+def dice_counts(inf):
+    file = open(inf, 'rb')
+    counts = {}
+    for i in range(1, 7):
+        counts[i] = 0
+    byte = file.read(6)
+
+    while byte:
+
+        curr = randint(byte, 1, 7)
+
+        counts[curr] += 1
+
+        byte = file.read(6)
 
     file.close()
     return counts
@@ -140,10 +157,16 @@ if __name__ == '__main__':
     vals = [v/_sum for v in list(counts.values())]
     plt.bar(range(len(counts)), vals, align='center')
     plt.title('Byte value distribution for {}'.format('even bytes post-SHA-512'))
-    #plt.xticks(range(len(counts)), list(counts.keys()))
+    plt.xticks(range(len(counts)), list(counts.keys()))
     p = max(counts.values()) / sum(counts.values())
     h_inf = -1 * math.log(p, 2)
     print('estimated min-entropy: {}'.format(h_inf))
+
+#    print('--- dice counts---')
+#    counts = dice_counts(inf)
+#    _sum = sum(list(counts.values()))
+#    vals = [v/_sum for v in list(counts.values())]
+#    plt.bar(range(len(counts)), vals)
 
     # digits
     #counts = digit_counts(inf)
