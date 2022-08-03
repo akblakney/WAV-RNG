@@ -9,7 +9,7 @@ from generator import bytes_from_block
 p = pyaudio .PyAudio()
 MIN_READ = 2048
 #BLOCK_SIZE = 4096 # note: BLOCK_SIZE in bytes, but audio stream in 16-bit ints.
-BLOCK_SIZE = 8192 * 4
+BLOCK_SIZE = 8192 * 4 # = 2^15 = approx. 32kb
 chunk = 1024
 sample_format = pyaudio.paInt16
 channels = 1

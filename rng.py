@@ -12,30 +12,8 @@ from generator import query_blocks, generate_from_wav
 import secrets
 from x_from_bytes import digits_from_bytes, ascii_from_bytes, binary_from_bytes,\
     hex_from_bytes
+from rand_utils import display
 
- # writes or prints self.data in desired format
-def display(wav_bytes, data_mode, outf):
-
-    # get data to write
-    write_mode = 'w'
-    if data_mode is None:
-        ret = wav_bytes
-        write_mode = 'wb'
-    elif data_mode == 'ascii':
-        ret = ascii_from_bytes(wav_bytes)
-    elif data_mode == 'binary':
-        ret = binary_from_bytes(wav_bytes)
-    elif data_mode == 'hex':
-        ret = hex_from_bytes(wav_bytes)
-    elif data_mode == 'digits':
-        ret = digits_from_bytes(wav_bytes)
-
-    # write or print
-    if outf is None:
-        print(ret)
-    else:
-        with open(outf, write_mode) as f:
-            f.write(ret)        
 
 # prints out the help statement
 def my_help():
@@ -55,6 +33,7 @@ def set_params():
     no_sha = set_param_bool(sys.argv, '--no-sha')
     header_len = set_param_int(sys.argv, '--header-len', 100)
     block_size = set_param_int(sys.argv, '--block-size', 2048)
+    fold = set_param_bool(sys.argv, '--fold')
 
 
     # set data mode
@@ -73,7 +52,7 @@ def set_params():
         'valid filename must follow --out flag.')
 
     return inf, start, end, data_mode, outf, no_sha, header_len, \
-        block_size
+        block_size, fold
 
 
 if __name__ == '__main__':
@@ -85,7 +64,7 @@ if __name__ == '__main__':
 
     # set params
     inf, start, end, data_mode, outf, no_sha, header_len, \
-        block_size = set_params()
+        block_size, fold = set_params()
 
     # not in help mode, because already quit, so must be regular or query mode
     # make sure filename is given
@@ -100,8 +79,10 @@ if __name__ == '__main__':
             inf, block_size, available_blocks))
         exit()
 
-    # now we are reading wav file
+    # now we are reading wav file and generate the bytearray from it
     ret = generate_from_wav(inf, block_size, start, end, header_len, no_sha)
+
+    # perform fold step if applicacable
 
     num_bytes = len(ret)
 
