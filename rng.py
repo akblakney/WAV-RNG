@@ -83,7 +83,8 @@ if __name__ == '__main__':
     ret = generate_from_wav(inf, block_size, start, end, header_len, no_sha)
 
     # perform fold step if applicacable
-    ret = fold_bytes(ret)
+    if fold:
+        ret = fold_bytes(ret)
 
     num_bytes = len(ret)
 
