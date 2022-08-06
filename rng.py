@@ -100,17 +100,18 @@ if __name__ == '__main__':
         exit()
 
     # now we are reading wav file and generate the bytearray from it
-    ret = generate_from_wav(inf, block_size, start, end, header_len, no_sha)
+    ret = generate_from_wav(inf, block_size=block_size, start=start, end=end, \
+        header_len=header_len, no_sha=no_sha)
 
-    # perform fold step if applicacable
-    if fold:
-        ret = fold_bytes(ret)
 
     # perform aes whitening if applicable
     # hard code aes values here ...
     if aes:
         ret = aes_whiten(ret)
         
+    # perform fold step if applicacable
+    if fold:
+        ret = fold_bytes(ret)
         
 
     num_bytes = len(ret)
