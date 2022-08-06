@@ -10,7 +10,7 @@ SecretsGenerator is used to generate pseudorandom numbers from the Python
 secrets module (A CSPRNG)
 '''
 
-from hashlib import sha512
+from hashlib import sha512, blake2b
 #from x_from_bytes import digits_from_bytes, ascii_from_bytes, binary_from_bytes,\
 #    hex_from_bytes
 from my_exception import MyException
@@ -47,10 +47,15 @@ def process_raw(raw_in, out_size):
 
     return raw_out
 
-def process_hash(hash_in, out_size):
-    return sha512(hash_in).digest()
+def process_hash(hash_in, hash_function='sha512'):
+    if hash_function == 'sha512':
+        return sha512(hash_in).digest()
+    elif hash_function == 'blake2b':
+        return blake2b(hash_in).digest()
+    else:
+        raise BaseException('invalid hash function specified')
 
-def bytes_from_block(wav_bytes, out_size=64, no_sha=False):
+def bytes_from_block(wav_bytes, out_size=64, no_sha=False, hash_function='sha512'):
 
     n = len(wav_bytes)
     assert(n % (2 * out_size) == 0)
@@ -66,7 +71,7 @@ def bytes_from_block(wav_bytes, out_size=64, no_sha=False):
         return raw_out
 
     # hash portion
-    hash_out = process_hash(hash_in, out_size)
+    hash_out = process_hash(hash_in, hash_function)
 
     # xor raw and hash portions
     ret = bytes(a ^ b for (a,b) in zip(raw_out, hash_out))
@@ -78,7 +83,7 @@ def query_blocks(filesize, block_size, header_len):
     return (filesize - header_len) // block_size
 
 def generate_from_wav(inf, block_size=2048, start=0, end=None, header_len=100, 
-    no_sha=False):
+    no_sha=False, hash_function='sha512'):
 
     out_size = 64 # hardcode sha512 constant
 
@@ -122,7 +127,8 @@ def generate_from_wav(inf, block_size=2048, start=0, end=None, header_len=100,
     for _ in range(num_blocks):
         wav_bytes = f.read(block_size)
         assert(len(wav_bytes) == block_size)
-        out_bytes = bytes_from_block(wav_bytes, out_size=out_size, no_sha=no_sha)
+        out_bytes = bytes_from_block(wav_bytes, out_size=out_size, \
+            no_sha=no_sha, hash_function=hash_function)
         assert(len(out_bytes) == out_size)
         ret.extend(out_bytes)
 

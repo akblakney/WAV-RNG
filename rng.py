@@ -71,8 +71,13 @@ def set_params():
     outf = set_param_gen(sys.argv, '--out', None,\
         'valid filename must follow --out flag.')
 
+    # option for blake
+    hash_function = 'sha512'
+    if '--blake' in sys.argv:
+        hash_function = 'blake2b'
+
     return inf, start, end, data_mode, outf, no_sha, header_len, \
-        block_size, fold, aes
+        block_size, fold, aes, hash_function
 
 
 if __name__ == '__main__':
@@ -84,7 +89,7 @@ if __name__ == '__main__':
 
     # set params
     inf, start, end, data_mode, outf, no_sha, header_len, \
-        block_size, fold, aes = set_params()
+        block_size, fold, aes, hash_function = set_params()
 
     # not in help mode, because already quit, so must be regular or query mode
     # make sure filename is given
@@ -100,7 +105,8 @@ if __name__ == '__main__':
         exit()
 
     # now we are reading wav file and generate the bytearray from it
-    ret = generate_from_wav(inf, block_size, start, end, header_len, no_sha)
+    ret = generate_from_wav(inf, block_size=block_size, start=start, end=end, \
+        header_len=header_len, no_sha=no_sha, hash_function=hash_function)
 
     # perform fold step if applicacable
     if fold:
