@@ -13,6 +13,25 @@ import secrets
 from x_from_bytes import digits_from_bytes, ascii_from_bytes, binary_from_bytes,\
     hex_from_bytes
 from rand_utils import display, fold_bytes
+import math
+from aes_prng import aes_prng
+
+def aes_whiten(b: bytearray):
+
+    seed = b[:48]
+    b = b[64:]  # start at second block now, discard first
+    key = seed[:32]
+    iv = seed[32:48]
+
+    # figure out how many 16-byte blocks needed
+    n = len(b)
+    num_blocks = math.ceil(n // 16)
+    aes_out = aes_prng(key, iv, num_blocks)
+    assert(len(aes_out) >= n)
+    
+    # xor
+    xor = bytes(a^b for (a,b) in zip(b, aes_out[:n]))
+    return xor
 
 
 # prints out the help statement
@@ -34,6 +53,7 @@ def set_params():
     header_len = set_param_int(sys.argv, '--header-len', 100)
     block_size = set_param_int(sys.argv, '--block-size', 2048)
     fold = set_param_bool(sys.argv, '--fold')
+    aes = set_param_bool(sys.argv, '--aes')
 
 
     # set data mode
@@ -52,7 +72,7 @@ def set_params():
         'valid filename must follow --out flag.')
 
     return inf, start, end, data_mode, outf, no_sha, header_len, \
-        block_size, fold
+        block_size, fold, aes
 
 
 if __name__ == '__main__':
@@ -64,7 +84,7 @@ if __name__ == '__main__':
 
     # set params
     inf, start, end, data_mode, outf, no_sha, header_len, \
-        block_size, fold = set_params()
+        block_size, fold, aes = set_params()
 
     # not in help mode, because already quit, so must be regular or query mode
     # make sure filename is given
@@ -85,6 +105,13 @@ if __name__ == '__main__':
     # perform fold step if applicacable
     if fold:
         ret = fold_bytes(ret)
+
+    # perform aes whitening if applicable
+    # hard code aes values here ...
+    if aes:
+        ret = aes_whiten(ret)
+        
+        
 
     num_bytes = len(ret)
 

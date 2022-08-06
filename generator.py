@@ -96,6 +96,8 @@ def generate_from_wav(inf, block_size=2048, start=0, end=None, header_len=100,
 
     # verify filesize with start and end
     total_blocks = query_blocks(filesize, block_size, header_len)
+    if total_blocks < 1:
+        raise BaseException('error: file size too small to generate a block')
 
     if end is None:
         end = total_blocks
