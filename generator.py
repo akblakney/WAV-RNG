@@ -47,15 +47,18 @@ def process_raw(raw_in, out_size):
 
     return raw_out
 
-def process_hash(hash_in, hash_function='sha512'):
+def process_hash(hash_in, hash_function='sha512', out_size=64):
     if hash_function == 'sha512':
-        return sha512(hash_in).digest()
+        ret = sha512(hash_in).digest()
     elif hash_function == 'blake2b':
-        return blake2b(hash_in).digest()
+        ret = blake2b(hash_in).digest()
     else:
         raise BaseException('invalid hash function specified')
 
-def bytes_from_block(wav_bytes, out_size=64, no_sha=False, hash_function='sha512'):
+    assert(len(ret) == out_size)
+    return ret
+
+def bytes_from_block(wav_bytes, out_size=64, no_hash=False, hash_function='sha512'):
 
     n = len(wav_bytes)
     assert(n % (2 * out_size) == 0)
@@ -67,11 +70,11 @@ def bytes_from_block(wav_bytes, out_size=64, no_sha=False, hash_function='sha512
     # raw portion
     raw_out = process_raw(raw_in, out_size)
 
-    if no_sha:
+    if no_hash:
         return raw_out
 
     # hash portion
-    hash_out = process_hash(hash_in, hash_function)
+    hash_out = process_hash(hash_in, hash_function=hash_function, out_size=out_size)
 
     # xor raw and hash portions
     ret = bytes(a ^ b for (a,b) in zip(raw_out, hash_out))
@@ -83,7 +86,7 @@ def query_blocks(filesize, block_size, header_len):
     return (filesize - header_len) // block_size
 
 def generate_from_wav(inf, block_size=2048, start=0, end=None, header_len=100, 
-    no_sha=False, hash_function='sha512'):
+    no_hash=False, hash_function='sha512'):
 
     out_size = 64 # hardcode sha512 constant
 
@@ -128,7 +131,7 @@ def generate_from_wav(inf, block_size=2048, start=0, end=None, header_len=100,
         wav_bytes = f.read(block_size)
         assert(len(wav_bytes) == block_size)
         out_bytes = bytes_from_block(wav_bytes, out_size=out_size, \
-            no_sha=no_sha, hash_function=hash_function)
+            no_hash=no_hash, hash_function=hash_function)
         assert(len(out_bytes) == out_size)
         ret.extend(out_bytes)
 

@@ -14,9 +14,10 @@ from x_from_bytes import digits_from_bytes, ascii_from_bytes, binary_from_bytes,
     hex_from_bytes
 from rand_utils import display, fold_bytes
 import math
-from aes_prng import aes_prng
 
 def aes_whiten(b: bytearray):
+
+    from aes_prng import aes_prng
 
     seed = b[:48]
     b = b[64:]  # start at second block now, discard first
@@ -49,7 +50,7 @@ def set_params():
 
     start = set_param_int(sys.argv, '-s', 0)
     end = set_param_int(sys.argv, '-e', None)
-    no_sha = set_param_bool(sys.argv, '--no-sha')
+    no_hash = set_param_bool(sys.argv, '--no-hash')
     header_len = set_param_int(sys.argv, '--header-len', 100)
     block_size = set_param_int(sys.argv, '--block-size', 2048)
     fold = set_param_bool(sys.argv, '--fold')
@@ -76,7 +77,7 @@ def set_params():
     if '--blake' in sys.argv:
         hash_function = 'blake2b'
 
-    return inf, start, end, data_mode, outf, no_sha, header_len, \
+    return inf, start, end, data_mode, outf, no_hash, header_len, \
         block_size, fold, aes, hash_function
 
 
@@ -88,7 +89,7 @@ if __name__ == '__main__':
         exit()
 
     # set params
-    inf, start, end, data_mode, outf, no_sha, header_len, \
+    inf, start, end, data_mode, outf, no_hash, header_len, \
         block_size, fold, aes, hash_function = set_params()
 
     # not in help mode, because already quit, so must be regular or query mode
@@ -106,7 +107,7 @@ if __name__ == '__main__':
 
     # now we are reading wav file and generate the bytearray from it
     ret = generate_from_wav(inf, block_size=block_size, start=start, end=end, \
-        header_len=header_len, no_sha=no_sha, hash_function=hash_function)
+        header_len=header_len, no_hash=no_hash, hash_function=hash_function)
 
     # perform fold step if applicacable
     if fold:

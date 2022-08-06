@@ -9,7 +9,7 @@ Method 2 (query): with python3 rng.py -q --in <filename> OR python3 rng.py --que
 
 Method 3 (generate from .wav), with: python3 rng.py --in <filename> [-s start]
   [-e end] [--out filename] [--sectets] [--ascii OR --binary OR --hex OR --digits]
-  [--no-hash]
+  [--no-hash] [--blake] [--aes] [--fold]
 
   In this method, a .wav file must be provided via --in <filename>
 
@@ -34,18 +34,23 @@ Method 3 (generate from .wav), with: python3 rng.py --in <filename> [-s start]
 
   --digits random bytes will be displayed 
 
-  --debug-raw causes even bytes of the wav file, without the SHA-512 post-processing
-    step to be output. This is useful for verifying that the even bytes of a .wav
-    file have enough entropy to generate random numbers.
+  --no-sha runs the generator without the hashing step. For data with high entropy,
+    this may be sufficient for generating random numbers, but is discouraged. The
+    main use of this option is to test to see if the data has enough entropy to
+    be used with the hashing step.
 
   --header-len <int> sets a custom header length for the .wav file. Default value is
-    100. Recommended to select integer at least 100 and it should be even, or else
-    the odd bytes will be used which is bad..
+    100. Recommended to select integer at least 100.
 
-  --extend <int> is used to seed a PRNG (based on SHA-512) with the entropy from the
-    atmospheric noise. The specified integer gives the number of 64-byte blocks to
-    output from one chunk of entropy from the .wav file (specified with --block-size,
-    with default value of 1024 bytes). 
+  --blake sets the hashing algorithm to be used to blake2b, instead of the default
+    sha512. The --no-hash option overrides this choice and causes the hashing step
+    to be skipped.
+
+  --aes after the RNG runs, the first 64-byte block will be used to seed a PRNG
+    based on AES in OFB mode. The output of this PRNG will be xor-ed with the output
+    of the normal RNG. Note that because the first 64-byte block is used to seed the RNG,
+    one less block will be output in this mode. Also note that this option requires
+    the Pycrypto Crypto module
 
 Examples uses:
 
@@ -56,7 +61,7 @@ Examples uses:
     (writes all random bytes generated from noise.wav to random_digits.txt in the form
     of decimal digits)
 
-  python3 rng.py --in noise.wav --header-len 200 --debug-raw
+  python3 rng.py --in noise.wav --out random_data_file --header-len 200 --no-hash
     (sets header length to 200 (instead of default 100) and outputs raw even bytes without
     the SHA-512 post-processing step)
 
