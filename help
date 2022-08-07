@@ -34,7 +34,7 @@ Method 3 (generate from .wav), with: python3 rng.py --in <filename> [-s start]
 
   --digits random bytes will be displayed 
 
-  --no-sha runs the generator without the hashing step. For data with high entropy,
+  --no-hash runs the generator without the hashing step. For data with high entropy,
     this may be sufficient for generating random numbers, but is discouraged. The
     main use of this option is to test to see if the data has enough entropy to
     be used with the hashing step.
@@ -62,7 +62,11 @@ Examples uses:
     of decimal digits)
 
   python3 rng.py --in noise.wav --out random_data_file --header-len 200 --no-hash
-    (sets header length to 200 (instead of default 100) and outputs raw even bytes without
-    the SHA-512 post-processing step)
+    (sets header length to 200 (instead of default 100) and outputs raw even bytes to
+    a file random_data_file without the SHA-512 post-processing step)
 
+  python3 rng.py --in noise.wav --out random_data_file --header-len 200 --blake
+    (sets header length to 200 (instead of default 100) and outputs raw even bytes to
+    a file random_data_file and uses the blake2b hashing algorithm instead of the
+    default SHA-512)
 
