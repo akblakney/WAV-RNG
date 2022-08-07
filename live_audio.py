@@ -57,7 +57,7 @@ while i < N:
     curr_wav_bytes = buffer[:BLOCK_SIZE]
     buffer = buffer[BLOCK_SIZE:]
 
-    rand_bytes = bytes_from_block(curr_wav_bytes, no_sha=False)
+    rand_bytes = bytes_from_block(curr_wav_bytes, no_hash=False)
     print('{}: {}'.format(i, ascii_from_bytes(rand_bytes)[:20]))
     i += 1
 
