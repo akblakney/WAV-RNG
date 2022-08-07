@@ -39,7 +39,8 @@ def start_collisions(inf, collision_size, header_len, block_size, num_blocks, \
         i += 1
 
     #return (len(l) - len(set(l))) / len(l)
-    return len(set(l)) / len(l)
+    #return len(set(l)) / len(l)        
+    return len(set(l)) , len(l)
 
 # return an estimate of the min-entropy, in bits/byte given a distribution
 # of bytes in dictionary form

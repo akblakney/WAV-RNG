@@ -17,11 +17,6 @@ rate = 48000
 fpb=1024
 N = 2000
 
-# wav file stuff
-#wf = wave.open('out.wav', 'wb')
-#wf.setnchannels(1)
-#wf.setsampwidth(2)
-#wf.setframerate(rate)
 
 # init stream
 stream = p.open(format=sample_format,
@@ -29,7 +24,7 @@ stream = p.open(format=sample_format,
   rate=rate,
   output=True,
   input=True,
-  frames_per_buffer=fpb)
+  frames_per__buffer=fpb)
 
 stream.start_stream()
 
@@ -39,7 +34,7 @@ time.sleep(1)
 # main loop
 i = 0
 #while stream.is_active():
-buffer = bytearray()
+_buffer = bytearray()
 while i < N:
 
   # read in available bytes
@@ -49,20 +44,17 @@ while i < N:
     continue
 
   #print('available: {}'.format(available))
-  buffer.extend(stream.read(available))
-  #print('in buffer: {}'.format(len(buffer)))
+  _buffer.extend(stream.read(available))
+  #print('in _buffer: {}'.format(len(_buffer)))
 
   # if enough to feed a block to RNG, do so
-  if len(buffer) > BLOCK_SIZE:
-    curr_wav_bytes = buffer[:BLOCK_SIZE]
-    buffer = buffer[BLOCK_SIZE:]
+  if len(_buffer) > BLOCK_SIZE:
+    curr_wav_bytes = _buffer[:BLOCK_SIZE]
+    _buffer = _buffer[BLOCK_SIZE:]
 
-    rand_bytes = bytes_from_block(curr_wav_bytes, no_hash=False)
+    rand_bytes = bytes_from_block(curr_wav_bytes, no_hash=True)
     print('{}: {}'.format(i, ascii_from_bytes(rand_bytes)[:20]))
     i += 1
 
 stream.stop_stream()
-
-#wf.close()
-
 print('here')
