@@ -98,7 +98,7 @@ if __name__ == '__main__':
         raise MyException('No filename given. Provide file with --in <filename>')
 
     # query for how many bytes can be generated
-    if '-q' in sys.argv:
+    if '-q' in sys.argv or '--query' in sys.argv:
         filesize = os.path.getsize(inf)
         available_blocks = query_blocks(filesize, block_size, header_len)
         print('available 64-byte blocks for {} with block-size {}: {}'.format(
