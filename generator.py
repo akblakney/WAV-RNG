@@ -49,12 +49,14 @@ def process_raw(raw_in, out_size):
 
 def process_hash(hash_in, hash_obj, out_size=64):
 
+    #print('digest before: {}'.format(hash_obj.hexdigest()))
     hash_obj.update(hash_in)
     ret = hash_obj.digest()
+    #print('digest after: {}'.format(hash_obj.hexdigest()))
     assert(len(ret) == out_size)
     return ret
 
-def bytes_from_block(wav_bytes, out_size=64, no_hash=False, hash_function='sha512'):
+def bytes_from_block(wav_bytes, out_size=64, no_hash=False, hash_obj=None, hash_function='sha512'):
 
     n = len(wav_bytes)
     assert(n % (2 * out_size) == 0)
@@ -68,11 +70,10 @@ def bytes_from_block(wav_bytes, out_size=64, no_hash=False, hash_function='sha51
 
     if no_hash:
         return raw_out
-
-    # setup hash object
-    if hash_function != 'sha512' and hash_function != 'blake2b':
-        raise BaseException('invalid hash specified.')
-    hash_obj = hashlib.new(hash_function)
+  
+    # we are in hash portion, make sure we have existing hash_obj
+    if hash_obj is None:
+        raise BaseException('no hash object passed to method')
 
     # hash portion
     hash_out = process_hash(hash_in, hash_obj, out_size=out_size)
@@ -120,6 +121,13 @@ def generate_from_wav(inf, block_size=2048, start=0, end=None, header_len=100,
 
     num_blocks = end - start
 
+    # setup hash object applicable
+    hash_obj = None
+    if not no_hash:
+        if hash_function != 'sha512' and hash_function != 'blake2b':
+            raise BaseException('invalid hash specified.')
+        hash_obj = hashlib.new(hash_function)
+
     # begin parsing wav file
     f = open(inf, 'rb')
     ret = bytearray()
@@ -132,7 +140,7 @@ def generate_from_wav(inf, block_size=2048, start=0, end=None, header_len=100,
         wav_bytes = f.read(block_size)
         assert(len(wav_bytes) == block_size)
         out_bytes = bytes_from_block(wav_bytes, out_size=out_size, \
-            no_hash=no_hash, hash_function=hash_function)
+            no_hash=no_hash, hash_obj=hash_obj, hash_function=hash_function)
         assert(len(out_bytes) == out_size)
         ret.extend(out_bytes)
 
