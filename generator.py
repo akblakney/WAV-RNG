@@ -1,19 +1,18 @@
 '''
 This file contains classes used to generate random numbers.
-Generator is an abstract class with an abstract method generate()
-which should populate self.data with bytearray. Contains
-methods for dipslaying bytes in other formats.
 
-MixGenerator is used to generate random bytes from .wav files.
+bytes_from_block() takes as input a bytearray, which should contain entropy
+generated from some separate source, and returns a full-entropy bytearray (as
+long as the input had sufficient entropy...). Other options can be specified too.
 
-SecretsGenerator is used to generate pseudorandom numbers from the Python
-secrets module (A CSPRNG)
+generate_from_wav() takes as input a filename which should point to a .wav file
+with recorded atmospheric noise, or some other high entropy file. Options specify
+whether or not to use a hash to increase the robustness of the randomness generated,
+and various other parameters
+
 '''
 
 import hashlib
-#from x_from_bytes import digits_from_bytes, ascii_from_bytes, binary_from_bytes,\
-#    hex_from_bytes
-from my_exception import MyException
 import os
 
 def process_raw(raw_in, out_size):
@@ -93,15 +92,15 @@ def generate_from_wav(inf, block_size=2048, start=0, end=None, header_len=100,
 
     # verify block_size
     if block_size % (out_size * 2) != 0:
-        raise MyException('block size must be divisible by {}'.format(out_size*2))
+        raise BaseException('block size must be divisible by {}'.format(out_size*2))
 
     if header_len < 100:
-        raise MyException('header length must be at least 100')
+        raise BaseException('header length must be at least 100')
 
     try:
         filesize = os.path.getsize(inf)
     except:
-        raise MyException('could not read file')
+        raise BaseException('could not read file')
 
     # verify filesize with start and end
     total_blocks = query_blocks(filesize, block_size, header_len)
@@ -112,11 +111,11 @@ def generate_from_wav(inf, block_size=2048, start=0, end=None, header_len=100,
         end = total_blocks
 
     if start < 0 or start >= total_blocks:
-        raise MyException('start position out of bounds')
+        raise BaseException('start position out of bounds')
     if end <= 0 or end > total_blocks:
-        raise MyException('end position out of bounds')
+        raise BaseException('end position out of bounds')
     if start >= end:
-        raise MyException('start cannot be >= end')
+        raise BaseException('start cannot be >= end')
 
     num_blocks = end - start
 

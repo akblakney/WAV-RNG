@@ -7,7 +7,6 @@ This is the driver script which can be used to generate random numbers from
 import sys
 import os
 from params import set_param_int, set_param_gen, set_param_bool
-from my_exception import MyException
 from generator import query_blocks, generate_from_wav
 import secrets
 from x_from_bytes import digits_from_bytes, ascii_from_bytes, binary_from_bytes,\
@@ -95,7 +94,7 @@ if __name__ == '__main__':
     # not in help mode, because already quit, so must be regular or query mode
     # make sure filename is given
     if inf is None:
-        raise MyException('No filename given. Provide file with --in <filename>')
+        raise BaseException('No filename given. Provide file with --in <filename>')
 
     # query for how many bytes can be generated
     if '-q' in sys.argv or '--query' in sys.argv:
