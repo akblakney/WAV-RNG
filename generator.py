@@ -10,7 +10,7 @@ SecretsGenerator is used to generate pseudorandom numbers from the Python
 secrets module (A CSPRNG)
 '''
 
-from hashlib import sha512, blake2b
+import hashlib
 #from x_from_bytes import digits_from_bytes, ascii_from_bytes, binary_from_bytes,\
 #    hex_from_bytes
 from my_exception import MyException
@@ -47,14 +47,10 @@ def process_raw(raw_in, out_size):
 
     return raw_out
 
-def process_hash(hash_in, hash_function='sha512', out_size=64):
-    if hash_function == 'sha512':
-        ret = sha512(hash_in).digest()
-    elif hash_function == 'blake2b':
-        ret = blake2b(hash_in).digest()
-    else:
-        raise BaseException('invalid hash function specified')
+def process_hash(hash_in, hash_obj, out_size=64):
 
+    hash_obj.update(hash_in)
+    ret = hash_obj.digest()
     assert(len(ret) == out_size)
     return ret
 
@@ -73,8 +69,13 @@ def bytes_from_block(wav_bytes, out_size=64, no_hash=False, hash_function='sha51
     if no_hash:
         return raw_out
 
+    # setup hash object
+    if hash_function != 'sha512' and hash_function != 'blake2b':
+        raise BaseException('invalid hash specified.')
+    hash_obj = hashlib.new(hash_function)
+
     # hash portion
-    hash_out = process_hash(hash_in, hash_function=hash_function, out_size=out_size)
+    hash_out = process_hash(hash_in, hash_obj, out_size=out_size)
 
     # xor raw and hash portions
     ret = bytes(a ^ b for (a,b) in zip(raw_out, hash_out))
