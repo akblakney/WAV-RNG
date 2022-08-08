@@ -49,10 +49,9 @@ def process_raw(raw_in, out_size):
 
 def process_hash(hash_in, hash_obj, out_size=64):
 
-    #print('digest before: {}'.format(hash_obj.hexdigest()))
     hash_obj.update(hash_in)
     ret = hash_obj.digest()
-    #print('digest after: {}'.format(hash_obj.hexdigest()))
+
     assert(len(ret) == out_size)
     return ret
 

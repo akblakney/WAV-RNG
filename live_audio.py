@@ -2,8 +2,8 @@ import wave
 import time
 import pyaudio
 from x_from_bytes import hex_from_bytes, ascii_from_bytes
-from hashlib import sha256
 from generator import bytes_from_block
+import hashlib
 
 # setup pyaudio and constants
 p = pyaudio .PyAudio()
@@ -24,7 +24,7 @@ stream = p.open(format=sample_format,
   rate=rate,
   output=True,
   input=True,
-  frames_per__buffer=fpb)
+  frames_per_buffer=fpb)
 
 stream.start_stream()
 
@@ -35,6 +35,10 @@ time.sleep(1)
 i = 0
 #while stream.is_active():
 _buffer = bytearray()
+
+# create hash_obj
+hash_obj = hashlib.new('blake2b')
+
 while i < N:
 
   # read in available bytes
@@ -52,7 +56,7 @@ while i < N:
     curr_wav_bytes = _buffer[:BLOCK_SIZE]
     _buffer = _buffer[BLOCK_SIZE:]
 
-    rand_bytes = bytes_from_block(curr_wav_bytes, no_hash=True)
+    rand_bytes = bytes_from_block(curr_wav_bytes, no_hash=False, hash_obj=hash_obj)
     print('{}: {}'.format(i, ascii_from_bytes(rand_bytes)[:20]))
     i += 1
 
