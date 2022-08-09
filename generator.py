@@ -12,7 +12,7 @@ and various other parameters
 
 '''
 
-import hashlib
+from hashlib import sha512, blake2b
 import os
 
 def process_raw(raw_in, out_size):
@@ -54,7 +54,7 @@ def process_hash(hash_in, hash_obj, out_size=64):
     assert(len(ret) == out_size)
     return ret
 
-def bytes_from_block(wav_bytes, out_size=64, no_hash=False, hash_obj=None, hash_function='sha512'):
+def bytes_from_block(wav_bytes, out_size=64, no_hash=False, hash_obj=None):
 
     n = len(wav_bytes)
     assert(n % (2 * out_size) == 0)
@@ -86,7 +86,7 @@ def query_blocks(filesize, block_size, header_len):
     return (filesize - header_len) // block_size
 
 def generate_from_wav(inf, block_size=2048, start=0, end=None, header_len=100, 
-    no_hash=False, hash_function='sha512'):
+    no_hash=False, hash_function='sha512', blake_key=b''):
 
     out_size = 64 # hardcode sha512 constant
 
@@ -122,9 +122,12 @@ def generate_from_wav(inf, block_size=2048, start=0, end=None, header_len=100,
     # setup hash object applicable
     hash_obj = None
     if not no_hash:
-        if hash_function != 'sha512' and hash_function != 'blake2b':
+        if hash_function == 'sha512':
+            hash_obj = sha512()
+        elif hash_function == 'blake2b':
+            hash_obj = blake2b(key=blake_key)
+        else:
             raise BaseException('invalid hash specified.')
-        hash_obj = hashlib.new(hash_function)
 
     # begin parsing wav file
     f = open(inf, 'rb')
@@ -138,7 +141,7 @@ def generate_from_wav(inf, block_size=2048, start=0, end=None, header_len=100,
         wav_bytes = f.read(block_size)
         assert(len(wav_bytes) == block_size)
         out_bytes = bytes_from_block(wav_bytes, out_size=out_size, \
-            no_hash=no_hash, hash_obj=hash_obj, hash_function=hash_function)
+            no_hash=no_hash, hash_obj=hash_obj)
         assert(len(out_bytes) == out_size)
         ret.extend(out_bytes)
 

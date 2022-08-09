@@ -14,6 +14,8 @@ from x_from_bytes import digits_from_bytes, ascii_from_bytes, binary_from_bytes,
 from rand_utils import display, fold_bytes
 import math
 
+BLAKE_KEY_SIZE = 64
+
 def aes_whiten(b: bytearray):
 
     from aes_prng import aes_prng
@@ -73,11 +75,29 @@ def set_params():
 
     # option for blake
     hash_function = 'sha512'
+    blake_key = b''
     if '--blake' in sys.argv:
         hash_function = 'blake2b'
 
+        # option for key
+        if '--key-hex' in sys.argv:
+            ind = sys.argv.index('--key-hex')
+            blake_key = bytes.fromhex(sys.argv[ind + 1])
+            if len(blake_key) != BLAKE_KEY_SIZE:
+                raise BaseException('blake key must be {} bytes'.format(BLAKE_KEY_SIZE))
+        elif '--key-file' in sys.argv:
+            ind = sys.argv.index('--key-file')
+            key_inf = sys.argv[ind + 1]
+            keyfile_size = os.path.getsize(key_inf)
+            if keyfile_size < BLAKE_KEY_SIZE:
+                raise BaseException(
+                    'specified key file is less than required {} bytes'.format(BLAKE_KEY_SIZE))
+            f = open(key_inf, 'rb')
+            blake_key = f.read(BLAKE_KEY_SIZE)
+            f.close()
+
     return inf, start, end, data_mode, outf, no_hash, header_len, \
-        block_size, fold, aes, hash_function
+        block_size, fold, aes, hash_function, blake_key
 
 
 if __name__ == '__main__':
@@ -89,7 +109,7 @@ if __name__ == '__main__':
 
     # set params
     inf, start, end, data_mode, outf, no_hash, header_len, \
-        block_size, fold, aes, hash_function = set_params()
+        block_size, fold, aes, hash_function, blake_key = set_params()
 
     # not in help mode, because already quit, so must be regular or query mode
     # make sure filename is given
@@ -106,7 +126,8 @@ if __name__ == '__main__':
 
     # now we are reading wav file and generate the bytearray from it
     ret = generate_from_wav(inf, block_size=block_size, start=start, end=end, \
-        header_len=header_len, no_hash=no_hash, hash_function=hash_function)
+        header_len=header_len, no_hash=no_hash, hash_function=hash_function, \
+        blake_key=blake_key)
 
     # perform fold step if applicacable
     if fold:
@@ -116,15 +137,12 @@ if __name__ == '__main__':
     # hard code aes values here ...
     if aes:
         ret = aes_whiten(ret)
-        
-        
 
     num_bytes = len(ret)
 
     if '--secrets' in sys.argv:
         s = secrets.token_bytes(num_bytes)
         ret = bytes(a^b for (a,b) in zip(ret, s))
-
     
     # print or write to file
     display(ret, data_mode, outf)
