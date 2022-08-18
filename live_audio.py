@@ -3,7 +3,7 @@ import time
 import pyaudio
 from x_from_bytes import hex_from_bytes, ascii_from_bytes
 from generator import bytes_from_block
-import hashlib
+from hashlib import blake2b
 
 # setup pyaudio and constants
 p = pyaudio .PyAudio()
@@ -37,7 +37,7 @@ i = 0
 _buffer = bytearray()
 
 # create hash_obj
-hash_obj = hashlib.new('blake2b')
+hash_obj = blake2b(key=b'hi how are you enter key here ..')
 
 while i < N:
 
@@ -56,7 +56,7 @@ while i < N:
     curr_wav_bytes = _buffer[:BLOCK_SIZE]
     _buffer = _buffer[BLOCK_SIZE:]
 
-    rand_bytes = bytes_from_block(curr_wav_bytes, no_hash=False, hash_obj=hash_obj)
+    rand_bytes = bytes_from_block(curr_wav_bytes, no_hash=True, hash_obj=hash_obj)
     print('{}: {}'.format(i, ascii_from_bytes(rand_bytes)[:20]))
     i += 1
 
